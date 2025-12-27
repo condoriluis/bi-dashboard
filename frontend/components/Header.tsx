@@ -11,13 +11,15 @@ import {
     Menu,
     BarChart3,
     BookOpen,
-    Workflow
+    Workflow,
+    User
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useState } from "react";
 import { SimpleTooltip } from "@/components/ui/simple-tooltip";
 
@@ -30,13 +32,13 @@ export default function Header() {
     const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, "");
 
     const navItems = [
-        { href: "/dashboard", label: "Vista General", icon: LayoutDashboard },
+        { href: "/dashboard", label: "General", icon: LayoutDashboard },
         { href: "/dashboard/datasets", label: "Datasets", icon: Database },
         { href: "/dashboard/transformations", label: "Transformaciones", icon: Workflow },
-        { href: "/dashboard/query", label: "Consulta SQL", icon: Terminal },
+        { href: "/dashboard/query", label: "SQL", icon: Terminal },
         { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
         { href: "/dashboard/converter", label: "Convertidor", icon: FileInput },
-        { href: `${baseUrl}/docs`, label: "Referencia API", icon: BookOpen, external: true },
+        { href: `${baseUrl}/docs`, label: "API", icon: BookOpen, external: true },
     ];
 
     const NavLink = ({ item, mobile = false }: { item: any, mobile?: boolean }) => {
@@ -101,10 +103,46 @@ export default function Header() {
                 <div className="flex items-center space-x-4">
                     <ThemeToggle />
 
-                    {/* Desktop User Info */}
-                    <div className="hidden xl:block text-sm text-right">
-                        <p className="font-medium leading-none">{user?.full_name || "Usuario"}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{user?.email}</p>
+                    {/* Desktop User Info (Dialog) */}
+                    <div className="hidden lg:block">
+                        <Dialog>
+                            <SimpleTooltip content="Perfil" side="bottom">
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted transition-colors">
+                                        <User className="h-5 w-5" />
+                                    </Button>
+                                </DialogTrigger>
+                            </SimpleTooltip>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Perfil de Usuario</DialogTitle>
+                                    <DialogDescription>
+                                        Información de tu cuenta actual.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="flex flex-col items-center gap-4 py-4">
+                                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                                        {user?.full_name?.charAt(0) || "U"}
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <h3 className="font-semibold text-xl">{user?.full_name || "Usuario"}</h3>
+                                        <p className="text-sm text-muted-foreground">{user?.email}</p>
+                                    </div>
+                                    <div className="w-full pt-4 border-t mt-2">
+                                        <div className="grid grid-cols-2 gap-4 text-center ">
+                                            <div className="bg-muted/50 p-3 rounded-lg">
+                                                <p className="text-xs text-muted-foreground uppercase font-semibold">Rol</p>
+                                                <p className="font-medium">Administrador</p>
+                                            </div>
+                                            <div className="bg-muted/50 p-3 rounded-lg">
+                                                <p className="text-xs text-muted-foreground uppercase font-semibold">Estado</p>
+                                                <p className="font-medium text-green-500">Activo</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
 
                     {/* Desktop Logout */}
