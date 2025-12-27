@@ -30,6 +30,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { SimpleTooltip } from "@/components/ui/simple-tooltip";
 
 interface Dataset {
     table_name: string;
@@ -496,18 +497,26 @@ export default function DatasetsPage() {
                                 </div>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <Button
-                                    variant={showOnlyDashboardDatasets ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setShowOnlyDashboardDatasets(!showOnlyDashboardDatasets)}
-                                    className="whitespace-nowrap"
-                                >
-                                    {showOnlyDashboardDatasets ? (
-                                        <><Filter className="h-4 w-4 mr-2" /> Solo de este Dashboard</>
-                                    ) : (
-                                        <><FilterX className="h-4 w-4 mr-2" /> Todos los Datasets</>
-                                    )}
-                                </Button>
+                                <SimpleTooltip content={showOnlyDashboardDatasets ? "Solo de este Dashboard" : "Todos los Datasets"} side="bottom">
+                                    <Button
+                                        variant={showOnlyDashboardDatasets ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setShowOnlyDashboardDatasets(!showOnlyDashboardDatasets)}
+                                        className="whitespace-nowrap"
+                                    >
+                                        {showOnlyDashboardDatasets ? (
+                                            <>
+                                                <Filter className="h-4 w-4 md:mr-0 xl:mr-2" />
+                                                <span className="md:hidden xl:inline ml-2">Solo de este Dashboard</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FilterX className="h-4 w-4 md:mr-0 xl:mr-2" />
+                                                <span className="md:hidden xl:inline ml-2">Todos los Datasets</span>
+                                            </>
+                                        )}
+                                    </Button>
+                                </SimpleTooltip>
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                                     <Input

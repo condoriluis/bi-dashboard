@@ -303,9 +303,9 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                 </CardHeader>
 
                 {/* CONTENT */}
-                <CardContent className="grid gap-8 md:grid-cols-2">
+                <CardContent className="grid gap-8 lg:grid-cols-5">
                     {/* ===================== LEFT COLUMN – DATASET ===================== */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 lg:col-span-3">
                         <div className="flex items-center gap-2">
                             <Database className="h-4 w-4 text-primary" />
                             <h3 className="text-sm font-semibold">Fuente de Datos</h3>
@@ -422,13 +422,13 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                 <label className="text-xs font-medium text-muted-foreground">
                                     Eje Y · Métrica
                                 </label>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <Select
                                         value={aggFunc}
                                         onValueChange={(v: any) => setAggFunc(v)}
                                         disabled={!selectedDataset}
                                     >
-                                        <SelectTrigger className="w-[110px] bg-background rounded-xl text-xs">
+                                        <SelectTrigger className="w-full sm:w-[110px] bg-background rounded-xl text-xs">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -446,7 +446,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                         onValueChange={setYAxis}
                                         disabled={!selectedDataset}
                                     >
-                                        <SelectTrigger className="flex-1 bg-background rounded-xl">
+                                        <SelectTrigger className="w-full sm:flex-1 bg-background rounded-xl text-xs">
                                             <SelectValue placeholder="Selecciona columna" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -467,7 +467,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                 <ArrowUpDown className="h-3.5 w-3.5" />
                                 Orden y límite
                             </label>
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                                 <Select value={orderBy} onValueChange={setOrderBy} disabled={!selectedDataset}>
                                     <SelectTrigger className="flex-1 bg-background rounded-xl text-xs">
                                         <SelectValue placeholder="Orden" />
@@ -480,7 +480,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                     </SelectContent>
                                 </Select>
                                 <Select value={limit} onValueChange={setLimit} disabled={!selectedDataset}>
-                                    <SelectTrigger className="w-[90px] bg-background rounded-xl text-xs">
+                                    <SelectTrigger className="w-full sm:w-[90px] bg-background rounded-xl text-xs">
                                         <SelectValue placeholder="Top" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -497,7 +497,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                     </div>
 
                     {/* ===================== RIGHT COLUMN – ENGINE & GRAPHICS ===================== */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 lg:col-span-2">
                         <div className="flex items-center gap-2">
                             <BarChart3 className="h-4 w-4 text-primary" />
                             <h3 className="text-sm font-semibold">Visualización</h3>

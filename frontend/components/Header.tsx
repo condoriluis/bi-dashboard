@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useState } from "react";
+import { SimpleTooltip } from "@/components/ui/simple-tooltip";
 
 export default function Header() {
     const { user, logout } = useAuth();
@@ -40,7 +41,8 @@ export default function Header() {
 
     const NavLink = ({ item, mobile = false }: { item: any, mobile?: boolean }) => {
         const isActive = pathname === item.href;
-        return (
+
+        const content = (
             <Link
                 href={item.href}
                 target={item.external ? "_blank" : undefined}
@@ -50,15 +52,25 @@ export default function Header() {
                     "flex items-center space-x-2 transition-all duration-200",
                     mobile
                         ? "px-4 py-3 rounded-lg text-sm"
-                        : "px-4 py-2 rounded-lg text-sm",
+                        : "lg:px-3 xl:px-4 py-2 rounded-lg text-sm",
                     isActive
                         ? "bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-primary font-semibold border border-primary/20"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
             >
-                <item.icon className={cn("flex-shrink-0", mobile ? "h-5 w-5" : "h-4 w-4")} />
-                <span>{item.label}</span>
+                <item.icon className={cn("flex-shrink-0", mobile ? "h-5 w-5" : "h-5 w-5 lg:h-5 lg:w-5")} />
+                <span className={mobile ? "" : "hidden xl:inline"}>{item.label}</span>
             </Link>
+        );
+
+        if (mobile) {
+            return content;
+        }
+
+        return (
+            <SimpleTooltip content={item.label} side="bottom">
+                {content}
+            </SimpleTooltip>
         );
     };
 
@@ -70,7 +82,7 @@ export default function Header() {
                     <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-in zoom-in duration-300">
                         <LayoutDashboard className="h-5 w-5 text-white" />
                     </div>
-                    <div className="hidden lg:block">
+                    <div className="hidden xl:block">
                         <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                             BI Dashboard
                         </span>
@@ -90,7 +102,7 @@ export default function Header() {
                     <ThemeToggle />
 
                     {/* Desktop User Info */}
-                    <div className="hidden lg:block text-sm text-right">
+                    <div className="hidden xl:block text-sm text-right">
                         <p className="font-medium leading-none">{user?.full_name || "Usuario"}</p>
                         <p className="text-xs text-muted-foreground mt-1">{user?.email}</p>
                     </div>
