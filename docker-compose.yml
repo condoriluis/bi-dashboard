@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3001:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DUCKDB_PATH=/app/bi_analytics.duckdb
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: always

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Database
+*.duckdb
+*.db
+bi_analytics.duckdb
+
+# IDEs
+.vscode/
+.idea/
+
+# Uploads/Data
+uploads/
