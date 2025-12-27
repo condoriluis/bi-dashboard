@@ -99,9 +99,10 @@ export default function TransformationsPage() {
             </div>
 
             {/* Filter and Search Bar */}
-            {transformations && transformations.length > 0 && (() => {
+            {!isLoading && (() => {
+                const allTransformations = transformations || [];
                 const dashboardDatasets = getDatasetsUsedByCurrentDashboard();
-                const filteredCount = transformations.filter(t => {
+                const filteredCount = allTransformations.filter(t => {
                     const viewName = t.name;
                     if (showOnlyDashboardTransformations) {
                         const isUsed = dashboardDatasets.includes(viewName);
@@ -135,11 +136,11 @@ export default function TransformationsPage() {
                             {showOnlyDashboardTransformations || searchQuery ? (
                                 <span>
                                     Mostrando <span className="font-semibold text-foreground">{filteredCount}</span> de{" "}
-                                    <span className="font-semibold text-foreground">{transformations.length}</span> transformaciones
+                                    <span className="font-semibold text-foreground">{allTransformations.length}</span> transformaciones
                                 </span>
                             ) : (
                                 <span>
-                                    <span className="font-semibold text-foreground">{transformations.length}</span> transformaciones totales
+                                    <span className="font-semibold text-foreground">{allTransformations.length}</span> transformaciones totales
                                 </span>
                             )}
                         </div>
