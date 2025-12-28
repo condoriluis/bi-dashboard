@@ -72,7 +72,6 @@ export default function QueryPage() {
         }
     }, []);
 
-    // Reset pagination when results change
     useEffect(() => {
         setCurrentPage(1);
     }, [results]);
@@ -165,7 +164,6 @@ export default function QueryPage() {
         }
     };
 
-    // Pagination Logic
     const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
     const paginatedResults = filteredResults.slice(
         (currentPage - 1) * itemsPerPage,
@@ -208,6 +206,10 @@ export default function QueryPage() {
                             </div>
                         </div>
                         <div className="flex items-center space-x-2">
+                            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 text-xs rounded-full border border-yellow-400/20">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Modo Sandbox: Solo consultas de lectura (SELECT)</span>
+                            </div>
                             <Button
                                 variant="ghost"
                                 size="sm"

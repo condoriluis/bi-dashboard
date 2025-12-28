@@ -25,7 +25,6 @@ api.interceptors.response.use(
             localStorage.removeItem('token');
             delete api.defaults.headers.common['Authorization'];
 
-            // Simple redirect without DOM manipulation to avoid React hydration errors
             if (typeof window !== 'undefined') {
                 window.location.href = '/login';
             }

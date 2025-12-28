@@ -48,7 +48,6 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
     const [sizeAxis, setSizeAxis] = useState("");
     const [colorColumn, setColorColumn] = useState("");
 
-    // Load initial config when opening in edit mode
     useEffect(() => {
         if (open && initialConfig) {
             setTitle(initialConfig.title);
@@ -70,7 +69,6 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
             setSizeAxis(initialConfig.sizeAxis || "");
             setColorColumn(initialConfig.colorColumn || "");
         } else if (open && !initialConfig) {
-            // Reset if opening in create mode
             resetForm();
         }
     }, [open, initialConfig]);
@@ -89,7 +87,12 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
         queryKey: ["columns", dataset],
         queryFn: async () => {
             if (!dataset) return [];
-            const res = await api.post("/sql/execute", { query: `SELECT * FROM ${dataset} LIMIT 1` });
+            const secureQuery = {
+                table: dataset,
+                columns: ['*'],
+                limit: 1
+            };
+            const res = await api.post("/sql/execute-secure", secureQuery);
             if (res.data && res.data.length > 0) {
                 return Object.keys(res.data[0]);
             }
@@ -182,13 +185,11 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                 {(() => {
                                     const dashboardDatasets = getDatasetsUsedByCurrentDashboard();
 
-                                    // 1. Filter datasets belonging to this dashboard (linked or used)
                                     const linkedDatasets = datasets?.filter(d =>
                                         d.dashboard_id === currentDashboard?.id ||
                                         dashboardDatasets.includes(d.table_name)
                                     ) || [];
 
-                                    // 2. Filter other datasets (global or from other dashboards)
                                     const otherDatasets = datasets?.filter(d =>
                                         d.dashboard_id !== currentDashboard?.id &&
                                         !dashboardDatasets.includes(d.table_name)

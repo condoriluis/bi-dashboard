@@ -39,6 +39,7 @@ export default function TransformationsPage() {
     const queryClient = useQueryClient();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingTransformation, setEditingTransformation] = useState<Transformation | null>(null);
+    const [initialAutoRun, setInitialAutoRun] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [transformationToDelete, setTransformationToDelete] = useState<number | null>(null);
     const [showOnlyDashboardTransformations, setShowOnlyDashboardTransformations] = useState(true);
@@ -66,8 +67,9 @@ export default function TransformationsPage() {
         }
     });
 
-    const handleEdit = (transformation: Transformation) => {
+    const handleEdit = (transformation: Transformation, autoRun: boolean = false) => {
         setEditingTransformation(transformation);
+        setInitialAutoRun(autoRun);
         setDialogOpen(true);
     };
 
@@ -79,6 +81,7 @@ export default function TransformationsPage() {
     const handleDialogClose = () => {
         setDialogOpen(false);
         setEditingTransformation(null);
+        setInitialAutoRun(false);
     };
 
     return (
@@ -270,8 +273,8 @@ export default function TransformationsPage() {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => handleEdit(transformation)}
-                                                    className="flex-1 hover:bg-primary/10"
+                                                    onClick={() => handleEdit(transformation, true)}
+                                                    className="flex-1 hover:bg-primary/10 cursor-pointer"
                                                 >
                                                     <Eye className="h-3.5 w-3.5 mr-1.5" />
                                                     Ver
@@ -454,6 +457,7 @@ export default function TransformationsPage() {
                 open={dialogOpen}
                 onClose={handleDialogClose}
                 transformation={editingTransformation}
+                initialAutoRun={initialAutoRun}
             />
 
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

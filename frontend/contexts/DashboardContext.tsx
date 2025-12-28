@@ -36,6 +36,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const [currentDashboardFull, setCurrentDashboardFull] = useState<Dashboard | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const hasInitialized = useRef(false);
+    const skipNextFetch = useRef(false);
 
     useEffect(() => {
         if (hasInitialized.current) return;
@@ -52,6 +53,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
                 const defaultDashboard = await dashboardService.create("Mi Dashboard", "Tablero principal");
                 setDashboards([defaultDashboard]);
                 setCurrentDashboardIdState(defaultDashboard.id);
+                setCurrentDashboardFull(defaultDashboard);
                 localStorage.setItem(STORAGE_KEY, defaultDashboard.id);
             } else {
                 setDashboards(dashboardList);
@@ -59,11 +61,23 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
                 const savedId = localStorage.getItem(STORAGE_KEY);
                 const dashboardExists = dashboardList.find(d => d.id === savedId);
 
+                let selectedId: string;
                 if (savedId && dashboardExists) {
-                    setCurrentDashboardIdState(savedId);
+                    selectedId = savedId;
                 } else {
-                    setCurrentDashboardIdState(dashboardList[0].id);
-                    localStorage.setItem(STORAGE_KEY, dashboardList[0].id);
+                    selectedId = dashboardList[0].id;
+                    localStorage.setItem(STORAGE_KEY, selectedId);
+                }
+
+                try {
+                    const fullDashboard = await dashboardService.get(selectedId);
+                    setCurrentDashboardFull(fullDashboard);
+
+                    skipNextFetch.current = true;
+                    setCurrentDashboardIdState(selectedId);
+                } catch (error) {
+                    console.error("Error loading dashboard details:", error);
+                    setCurrentDashboardIdState(selectedId);
                 }
             }
         } catch (error) {
@@ -75,6 +89,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (!currentDashboardId) return;
+
+        if (skipNextFetch.current) {
+            skipNextFetch.current = false;
+            return;
+        }
 
         const loadCurrentDashboardDetails = async () => {
             try {

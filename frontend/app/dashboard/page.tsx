@@ -29,47 +29,38 @@ export default function DashboardPage() {
     const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null);
     const [isWidgetsLoaded, setIsWidgetsLoaded] = useState(false);
 
-    // Dashboard Manager State
     const [isManagerOpen, setIsManagerOpen] = useState(false);
     const [managerMode, setManagerMode] = useState<'create' | 'edit' | 'delete'>('create');
     const [managingDashboard, setManagingDashboard] = useState<any>(null);
 
     const skipNextLoadRef = useRef(false);
+    const hasLoadedInitially = useRef(false);
 
-    // Load widgets when dashboard changes
     useEffect(() => {
-        if (!currentDashboardId || isDashboardLoading) return;
-
-        if (skipNextLoadRef.current) {
-            skipNextLoadRef.current = false;
+        if (!currentDashboard || isDashboardLoading) {
+            setIsWidgetsLoaded(false);
+            hasLoadedInitially.current = false;
             return;
         }
 
-        const loadWidgets = async () => {
-            try {
-                const fullDashboard = await dashboardService.get(currentDashboardId);
-                const loadedWidgets = fullDashboard.items.map((item: any) => ({
-                    ...item.config,
-                    id: item.id
-                }));
-                setWidgets(loadedWidgets);
-            } catch (error: any) {
-                console.error("Error loading widgets", error);
+        const loadedWidgets = currentDashboard.items.map((item: any) => ({
+            ...item.config,
+            id: item.id
+        }));
 
-                if (error.response?.status === 404) {
-                    setWidgets([]);
-                }
-            } finally {
-                setIsWidgetsLoaded(true);
-            }
-        };
+        if (JSON.stringify(loadedWidgets) !== JSON.stringify(widgets)) {
+            setWidgets(loadedWidgets);
+        }
+        setIsWidgetsLoaded(true);
 
-        loadWidgets();
-    }, [currentDashboardId, isDashboardLoading]);
+        setTimeout(() => {
+            hasLoadedInitially.current = true;
+        }, 100);
+    }, [currentDashboard, isDashboardLoading]);
 
-    // Auto-save widgets
     useEffect(() => {
-        if (isWidgetsLoaded && currentDashboardId) {
+
+        if (isWidgetsLoaded && currentDashboardId && hasLoadedInitially.current) {
             const saveTimeout = setTimeout(() => {
                 dashboardService.updateLayout(currentDashboardId, widgets)
                     .then(updatedDashboard => {
@@ -91,14 +82,14 @@ export default function DashboardPage() {
             newWidgets = [...widgets, config];
         }
         setWidgets(newWidgets);
-        updateCurrentDashboardItems(newWidgets); // Instant sync to context
+        updateCurrentDashboardItems(newWidgets);
         setIsBuilderOpen(false);
     };
 
     const handleDeleteWidget = (id: string) => {
         const newWidgets = widgets.filter(w => w.id !== id);
         setWidgets(newWidgets);
-        updateCurrentDashboardItems(newWidgets); // Instant sync to context
+        updateCurrentDashboardItems(newWidgets);
     };
 
     const handleEditWidget = (config: WidgetConfig) => {
@@ -111,7 +102,6 @@ export default function DashboardPage() {
         setIsBuilderOpen(true);
     };
 
-    // Dashboard Management Handlers
     const handleDashboardChange = (dashboardId: string) => {
         setCurrentDashboardId(dashboardId);
     };

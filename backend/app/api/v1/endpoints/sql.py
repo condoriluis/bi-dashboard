@@ -22,7 +22,6 @@ def execute_sql(
     """
     sql = query_req.query.strip()
     
-    # Basic SQL Sanitization / Sandbox
     allowed_prefixes = ("select", "describe", "show", "explain")
     if not sql.lower().startswith(allowed_prefixes):
         raise HTTPException(status_code=400, detail="Only SELECT, SHOW, DESCRIBE and EXPLAIN queries are allowed.")
@@ -30,23 +29,12 @@ def execute_sql(
     forbidden_keywords = ["drop", "delete", "insert", "update", "alter", "create", "truncate", "grant", "revoke"]
     for word in forbidden_keywords:
         if f" {word} " in f" {sql.lower()} ":
-             # This is a naive check, but robust enough for a basic sandbox without full parsing
-             # A user might have "select * from drop_table" which is valid, but "drop table" is not.
-             # Ideally we use a parser. For MVP, we'll block strictly.
-             pass
+            raise HTTPException(status_code=400, detail=f"Forbidden keyword '{word}' detected. Sandbox allows read-only operations.")
     
-    # Better check: split by ; and ensure only one statement if we want to be strict, or just rely on startswith select.
-    # DuckDB execute() can run multiple statements.
-    # Let's enforce single statement.
-    if ";" in sql.replace(";", ""): # If there are useful semicolons inside strings this fails.
-        # Simple mitigation:
-        pass
+    if ";" in sql.replace(";", ""):
+        raise HTTPException(status_code=400, detail="Multiple statements (semicolons) are not allowed in Sandbox.")
 
     try:
-        # Fetch data as list of dicts
-        # DuckDB returned relation object, we can convert to arrow or df or list of dicts.
-        # fetchall returns tuples. fetch_arrow_table or fetch_df is better for mapping to JSON.
-        # But for list[dict] we need column names.
         
         cursor = db_conn.execute(sql)
         columns = [desc[0] for desc in cursor.description]
@@ -55,5 +43,37 @@ def execute_sql(
         result = [dict(zip(columns, row)) for row in rows]
         return result
         
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Query execution failed: {str(e)}")
+
+
+from app.schemas.query_builder import QueryBuilderRequest
+from app.core.query_builder import SecureQueryBuilder
+
+@router.post("/execute-secure", response_model=List[Dict[str, Any]])
+def execute_secure_query(
+    query_req: QueryBuilderRequest,
+    current_user: User = Depends(deps.get_current_user),
+    db_conn = Depends(get_db)
+) -> Any:
+    """
+    Execute a secure query using query builder.
+    100% safe against SQL injection.
+    """
+    builder = SecureQueryBuilder()
+    
+    try:
+        sql, params = builder.build_sql(query_req)
+        
+        cursor = db_conn.execute(sql, params)
+        if cursor.description:
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            result = [dict(zip(columns, row)) for row in rows]
+            return result
+        return []
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Query execution failed: {str(e)}")

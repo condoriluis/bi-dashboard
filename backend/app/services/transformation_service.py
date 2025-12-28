@@ -16,7 +16,6 @@ class TransformationService:
                         'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'COALESCE', 'CAST',
                         'UPPER', 'LOWER', 'TRIM', 'SUBSTRING', 'CONCAT', 'STRPTIME'}
     
-    # Comandos peligrosos que NO se permiten
     FORBIDDEN_KEYWORDS = {'DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE TABLE',
                           'TRUNCATE', 'GRANT', 'REVOKE', 'EXEC', 'EXECUTE'}
     
@@ -27,7 +26,6 @@ class TransformationService:
         """
         sql_upper = sql.upper()
         
-        # Verificar comandos prohibidos
         for forbidden in self.FORBIDDEN_KEYWORDS:
             if forbidden in sql_upper:
                 return False, f"Comando prohibido detectado: {forbidden}"
@@ -95,7 +93,6 @@ class TransformationService:
                 now
             ])
             
-            # Obtener el ID generado
             result = conn.execute("SELECT id FROM transformations WHERE name = ?", [transformation.name]).fetchone()
             transformation_id = result[0]
             

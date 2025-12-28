@@ -50,6 +50,7 @@ interface TransformationDialogProps {
     open: boolean;
     onClose: () => void;
     transformation?: Transformation | null;
+    initialAutoRun?: boolean;
 }
 
 interface Dataset {
@@ -131,7 +132,7 @@ const SQL_TEMPLATES = [
     }
 ];
 
-export default function TransformationDialog({ open, onClose, transformation }: TransformationDialogProps) {
+export default function TransformationDialog({ open, onClose, transformation, initialAutoRun = false }: TransformationDialogProps) {
     const { currentDashboard } = useDashboard();
     const queryClient = useQueryClient();
     const [name, setName] = useState("");
@@ -162,23 +163,55 @@ export default function TransformationDialog({ open, onClose, transformation }: 
         }
     });
 
+    const handlePreview = async (sqlOverride?: string, sourceOverride?: string) => {
+        const sql = sqlOverride || sqlDefinition;
+        const source = sourceOverride || sourceTable;
+
+        if (!source || !sql) return;
+
+        if (sql.includes('[tabla_origen]') || sql.includes('[tabla_secundaria]') || sql.includes('[')) {
+            toast.error('Por favor, edita el SQL y reemplaza los placeholders [tabla_origen], [tabla_secundaria], etc. con nombres reales de tablas y columnas.');
+            return;
+        }
+
+        setPreviewLoading(true);
+        try {
+            const res = await api.post("/transformations/preview", {
+                source_table: source,
+                sql_definition: sql.trim().replace(/;+$/, '')
+            });
+            setPreviewData(res.data.data || []);
+            setActiveTab("preview");
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || "Error en preview");
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (transformation) {
             setName(transformation.name);
             setDescription(transformation.description || "");
             setSourceTable(transformation.source_table);
             setSqlDefinition(transformation.sql_definition);
+
+            if (open && initialAutoRun) {
+                // Auto-run preview
+                handlePreview(transformation.sql_definition, transformation.source_table);
+            } else {
+                setActiveTab("config");
+            }
         } else {
             setName("");
             setDescription("");
             setSourceTable("");
             setSqlDefinition("");
+            setActiveTab("config");
         }
         setPreviewData([]);
-        setActiveTab("config");
-    }, [transformation, open]);
+    }, [transformation, open, initialAutoRun]);
 
-    // Effect to fetch source table preview when sourceTable changes
     useEffect(() => {
         const fetchSourcePreview = async () => {
             if (!sourceTable) {
@@ -193,8 +226,7 @@ export default function TransformationDialog({ open, onClose, transformation }: 
                     sql_definition: `SELECT * FROM ${sourceTable} LIMIT 10`
                 });
                 setSourcePreviewData(res.data.data || []);
-                // Auto-navigate to source preview tab when data loads
-                if (res.data.data && res.data.data.length > 0 && activeTab === "config") {
+                if (res.data.data && res.data.data.length > 0 && !initialAutoRun) {
                     setTimeout(() => setActiveTab("source"), 300);
                 }
             } catch (error) {
@@ -206,7 +238,7 @@ export default function TransformationDialog({ open, onClose, transformation }: 
         };
 
         fetchSourcePreview();
-    }, [sourceTable]);
+    }, [sourceTable, initialAutoRun]);
 
     const handleCopyColumn = (colName: string) => {
         navigator.clipboard.writeText(colName);
@@ -229,28 +261,7 @@ export default function TransformationDialog({ open, onClose, transformation }: 
         }
     });
 
-    const handlePreview = async () => {
-        if (!sourceTable || !sqlDefinition) return;
 
-        if (sqlDefinition.includes('[tabla_origen]') || sqlDefinition.includes('[tabla_secundaria]') || sqlDefinition.includes('[')) {
-            toast.error('Por favor, edita el SQL y reemplaza los placeholders [tabla_origen], [tabla_secundaria], etc. con nombres reales de tablas y columnas.');
-            return;
-        }
-
-        setPreviewLoading(true);
-        try {
-            const res = await api.post("/transformations/preview", {
-                source_table: sourceTable,
-                sql_definition: sqlDefinition.trim().replace(/;+$/, '')
-            });
-            setPreviewData(res.data.data || []);
-            setActiveTab("preview");
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Error en preview");
-        } finally {
-            setPreviewLoading(false);
-        }
-    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -724,7 +735,7 @@ export default function TransformationDialog({ open, onClose, transformation }: 
                                             </p>
                                             <Button
                                                 type="button"
-                                                onClick={handlePreview}
+                                                onClick={() => handlePreview()}
                                                 disabled={!sourceTable || !sqlDefinition || previewLoading}
                                                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
                                             >

@@ -160,7 +160,6 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
 
             </MapContainer>
 
-            {/* Custom Controls Wrapper - Moved outside MapContainer */}
             <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 pointer-events-auto">
                 <div className="bg-background/90 backdrop-blur-md border border-border/50 p-1.5 rounded-lg shadow-lg flex flex-col gap-1">
                     <button
@@ -185,7 +184,6 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
                     </button>
                 </div>
 
-                {/* Reset View */}
                 <button
                     onClick={handleResetView}
                     className="bg-background/90 backdrop-blur-md border border-border/50 p-2.5 rounded-lg shadow-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
@@ -195,7 +193,6 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
                 </button>
             </div>
 
-            {/* Scale Legend (Optional, showing only when size axis is present) */}
             {config.sizeAxis && viewMode === 'points' && (
                 <div className="absolute bottom-6 left-6 z-10 pointer-events-none">
                     <div className="bg-background/90 backdrop-blur-md border border-border/50 p-2 rounded-lg shadow-lg flex flex-col items-center gap-1 min-w-[80px]">

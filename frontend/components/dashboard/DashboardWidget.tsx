@@ -3,9 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Loader2, AlertCircle, Trash2, MoreVertical, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, AlertCircle, Trash2, MoreVertical, Pencil, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import dynamic from 'next/dynamic';
-import { WidgetConfig, generateWidgetSQL, formatCurrency, formatNumber } from "@/lib/utils";
+import { WidgetConfig, buildSecureQuery, formatCurrency, formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -25,7 +25,7 @@ interface DashboardWidgetProps {
     onEdit: (config: WidgetConfig) => void;
 }
 
-function DashboardWidgetMenu({ config, onEdit, onDelete, triggerClassName }: { config: WidgetConfig, onEdit: (c: WidgetConfig) => void, onDelete: (id: string) => void, triggerClassName?: string }) {
+function DashboardWidgetMenu({ config, onEdit, onDelete, onExport, triggerClassName }: { config: WidgetConfig, onEdit: (c: WidgetConfig) => void, onDelete: (id: string) => void, onExport?: () => void, triggerClassName?: string }) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -34,6 +34,11 @@ function DashboardWidgetMenu({ config, onEdit, onDelete, triggerClassName }: { c
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+                {onExport && (
+                    <DropdownMenuItem onClick={onExport}>
+                        <Download className="mr-2 h-4 w-4" /> Exportar CSV
+                    </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => onEdit(config)}>
                     <Pencil className="mr-2 h-4 w-4" /> Editar
                 </DropdownMenuItem>
@@ -46,12 +51,11 @@ function DashboardWidgetMenu({ config, onEdit, onDelete, triggerClassName }: { c
 }
 
 export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetProps) {
-    const sql = generateWidgetSQL(config);
+
     const [page, setPage] = useState(1);
     const pageSize = 10;
     const [isDarkMode, setIsDarkMode] = useState(false);
 
-    // Detect theme changes
     useEffect(() => {
         const checkTheme = () => {
             setIsDarkMode(document.documentElement.classList.contains('dark'));
@@ -69,17 +73,33 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
     }, []);
 
     const { data: result, isLoading, error } = useQuery({
-        queryKey: ["widget", config.id, sql],
+        queryKey: ["widget", config.id, config],
         queryFn: async () => {
-            if (!sql) return null;
-            const res = await api.post("/sql/execute", { query: sql });
+            const secureQuery = buildSecureQuery(config);
+            const res = await api.post("/sql/execute-secure", secureQuery);
             return res.data;
         },
-        enabled: !!sql,
-        staleTime: 1000 * 60 * 5,
+        enabled: !!config.dataset,
+        staleTime: 1000 * 60 * 10,
+        gcTime: 1000 * 60 * 15,
     });
 
-    // --- Loading State ---
+    const handleDownloadCSV = () => {
+        if (!result || result.length === 0) return;
+
+        // Get headers
+        const headers = Object.keys(result[0]).join(",");
+        const rows = result.map((row: any) => Object.values(row).map(value => `"${value}"`).join(",")).join("\n");
+        const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `${config.title || "widget_data"}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (isLoading) {
         return (
             <Card className="h-full flex items-center justify-center min-h-[200px] border-primary/20">
@@ -88,21 +108,17 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
         );
     }
 
-    // --- Error State ---
     if (error) {
         const errorDetail = (error as any)?.response?.data?.detail || "Error al obtener datos";
 
-        // Detect if it's a missing table/transformation error
         const isMissingTable = errorDetail.includes("does not exist") || errorDetail.includes("Catalog Error");
 
-        // Extract table name if available
         let missingTableName = config.dataset;
         const tableMatch = errorDetail.match(/Table with name (\w+) does not exist/);
         if (tableMatch) {
             missingTableName = tableMatch[1];
         }
 
-        // Extract suggestions if available
         let suggestion = null;
         const suggestionMatch = errorDetail.match(/Did you mean "(\w+)"/);
         if (suggestionMatch) {
@@ -225,6 +241,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                         config={config}
                         onEdit={onEdit}
                         onDelete={onDelete}
+                        onExport={handleDownloadCSV}
                     />
                 </CardHeader>
 
@@ -297,7 +314,6 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             series = isCircular ? seriesData : [{ name: config.yAxis || 'Valor', data: seriesData }];
         }
 
-        // Palette generation for corporate colors
         let colors = ['#0ea5e9', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'];
 
         if (config.color && config.color !== 'default') {
@@ -311,7 +327,29 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
         const chartOptions: any = {
             chart: {
                 stacked: !!config.breakdown && (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'area'),
-                toolbar: { show: false },
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: true,
+                        selection: true,
+                        zoom: true,
+                        zoomin: true,
+                        zoomout: true,
+                        pan: true,
+                        reset: true
+                    },
+                    export: {
+                        csv: {
+                            filename: config.title || 'chart_data',
+                        },
+                        png: {
+                            filename: config.title || 'chart_image',
+                        },
+                        svg: {
+                            filename: config.title || 'chart_vector',
+                        }
+                    }
+                },
                 background: 'transparent',
                 animations: {
                     enabled: true,
@@ -487,7 +525,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                             {config.dataset}
                         </CardDescription>
                     </div>
-                    <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} />
+                    <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} onExport={handleDownloadCSV} />
                 </CardHeader>
                 <CardContent className="flex-1 min-h-0 overflow-auto p-0">
                     <Table>
@@ -592,7 +630,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                             {config.dataset}
                         </CardDescription>
                     </div>
-                    <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} />
+                    <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} onExport={handleDownloadCSV} />
                 </CardHeader>
                 <CardContent className="h-full flex-1 min-h-0 p-0 relative">
                     {hasData ? (

@@ -26,11 +26,10 @@ class DataLoader:
                 )
             """)
             
-            # Migration: Add dashboard_id column if it doesn't exist
             try:
                 conn.execute("ALTER TABLE dataset_metadata ADD COLUMN dashboard_id VARCHAR")
             except:
-                pass # Column likely already exists
+                pass
                 
         finally:
             conn.close()

@@ -76,9 +76,10 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
 
     const fetchColumns = async (tableName: string) => {
         try {
-
-            const res = await api.post("/sql/execute", {
-                query: `SELECT * FROM ${tableName} LIMIT 1`
+            const res = await api.post("/sql/execute-secure", {
+                table: tableName,
+                columns: ['*'],
+                limit: 1
             });
             const data = res.data;
             if (Array.isArray(data) && data.length > 0) {
@@ -98,24 +99,35 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
         setError("");
 
         try {
-            // Construct SQL Query for Aggregation
             const isDirect = aggFunc === "NONE";
-            const aggExpression = isDirect ? yAxis : (aggFunc === "COUNT" ? "COUNT(*)" : `${aggFunc}(${yAxis})`);
 
-            let orderByClause = "x_val ASC";
-            if (orderBy === "x_desc") orderByClause = "x_val DESC";
-            if (orderBy === "y_asc") orderByClause = "y_val ASC";
-            if (orderBy === "y_desc") orderByClause = "y_val DESC";
+            const request: any = {
+                table: selectedDataset,
+                columns: [
+                    { column: xAxis, alias: "x_val" },
+                    {
+                        column: yAxis,
+                        function: isDirect ? undefined : aggFunc,
+                        alias: "y_val"
+                    }
+                ],
+                limit: parseInt(limit)
+            };
 
-            const query = `
-                SELECT ${xAxis} as x_val, ${aggExpression} as y_val 
-                FROM ${selectedDataset} 
-                ${isDirect ? "" : `GROUP BY ${xAxis}`}
-                ORDER BY ${orderByClause} 
-                LIMIT ${limit}
-            `;
+            if (!isDirect) {
+                request.groupBy = [xAxis];
+            }
 
-            const res = await api.post("/sql/execute", { query });
+            let orderCol = "x_val";
+            let orderDir = "ASC";
+
+            if (orderBy === "x_desc") { orderCol = "x_val"; orderDir = "DESC"; }
+            if (orderBy === "y_asc") { orderCol = "y_val"; orderDir = "ASC"; }
+            if (orderBy === "y_desc") { orderCol = "y_val"; orderDir = "DESC"; }
+
+            request.orderBy = [{ column: orderCol, direction: orderDir }];
+
+            const res = await api.post("/sql/execute-secure", request);
             const data = res.data;
 
             if (Array.isArray(data)) {
@@ -126,18 +138,15 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
             const errorDetail = err.response?.data?.detail || "";
 
             if (errorDetail.includes("Binder Error") && errorDetail.includes("sum(VARCHAR)")) {
-                setError("No se puede realizar una suma (SUM) sobre una columna de texto. Por favor, selecciona una columna numérica o cambia la operación a 'Conteo' (COUNT).");
-            } else if (errorDetail.includes("Binder Error")) {
-                setError("Error de compatibilidad de datos. Verifica que la columna seleccionada sea compatible con la operación matemática (ej. no puedes promediar textos).");
+                setError("No se puede realizar una suma sobre texto. Cambia a COUNT o elige una columna numérica.");
             } else {
-                setError(errorDetail || "Error al generar el gráfico. Revisa tu configuración.");
+                setError(errorDetail || "Error al generar el gráfico.");
             }
         } finally {
             setLoadingChart(false);
         }
     };
 
-    // Prepare Series and Options for ApexCharts
     const apexSeries = useMemo(() => {
         const data = chartData.map(d => typeof d.y_val === 'bigint' ? Number(d.y_val) : d.y_val);
 
