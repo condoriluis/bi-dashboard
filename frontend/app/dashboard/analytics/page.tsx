@@ -5,7 +5,7 @@ import { DashboardBadge } from "@/components/dashboard/DashboardBadge";
 
 export default function AnalyticsPage() {
     return (
-        <div className="space-y-8">
+        <div className="space-y-4">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-in slide-in-from-left duration-500">
                 <div className="space-y-1">

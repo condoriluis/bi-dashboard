@@ -112,7 +112,7 @@ export default function ConverterPage() {
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-4">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in slide-in-from-top duration-500">
                 <div className="space-y-1.5">

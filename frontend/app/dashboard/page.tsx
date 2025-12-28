@@ -146,7 +146,6 @@ export default function DashboardPage() {
             removeDashboard(managingDashboard.id);
 
             if (dashboards.length > 1) {
-                // Context will handle switching to another dashboard
             } else {
                 const newDashboard = await dashboardService.create("Mi Dashboard", "Tablero principal");
                 addDashboard(newDashboard);
@@ -159,46 +158,44 @@ export default function DashboardPage() {
 
 
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 gap-4">
-                {/* Dashboard Selector */}
-                <DashboardSelector
-                    dashboards={dashboards}
-                    currentDashboardId={currentDashboardId}
-                    onDashboardChange={handleDashboardChange}
-                    onCreateDashboard={handleCreateDashboard}
-                    onEditDashboard={handleEditDashboard}
-                    onDeleteDashboard={handleDeleteDashboard}
-                />
+        <div className="space-y-4">
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/40 -mx-4 sm:-mx-6 lg:-mx-4 px-4 sm:px-6 lg:px-4 py-0">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    {currentDashboard && (
+                        <div className="space-y-0.5 min-w-0 flex-shrink animate-in fade-in-50 duration-300">
+                            <h2 className="text-2xl lg:text-3xl font-bold truncate">{currentDashboard.name}</h2>
+                            {currentDashboard.description && (
+                                <p className="text-sm text-muted-foreground truncate">{currentDashboard.description}</p>
+                            )}
+                        </div>
+                    )}
 
-                {/* Add Widget Button */}
-                <div className="flex items-center space-x-2 animate-in slide-in-from-right duration-500">
-                    <Button
-                        onClick={handleOpenBuilder}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/20 dark:text-white"
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Agregar Widget
-                    </Button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:gap-4">
+                        <DashboardSelector
+                            dashboards={dashboards}
+                            currentDashboardId={currentDashboardId}
+                            onDashboardChange={handleDashboardChange}
+                            onCreateDashboard={handleCreateDashboard}
+                            onEditDashboard={handleEditDashboard}
+                            onDeleteDashboard={handleDeleteDashboard}
+                        />
+
+                        <Button
+                            onClick={handleOpenBuilder}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/20 dark:text-white cursor-pointer whitespace-nowrap"
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Agregar Widget
+                        </Button>
+                    </div>
                 </div>
             </div>
 
-            {/* Dashboard Info */}
-            {currentDashboard && (
-                <div className="space-y-1 animate-in fade-in-50 duration-300">
-                    <h2 className="text-4xl font-bold">{currentDashboard.name}</h2>
-                    {currentDashboard.description && (
-                        <p className="text-muted-foreground">{currentDashboard.description}</p>
-                    )}
-                </div>
-            )}
-
-            {/* Widget Grid */}
             {!isWidgetsLoaded ? (
                 <div className="flex items-center justify-center min-h-[400px]">
                     <Sparkles className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : widgets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-primary/20 rounded-xl bg-muted/10 animate-in fade-in-50">
+                <div className="flex flex-col items-center justify-center min-h-[300px] border-2 border-dashed border-primary/20 rounded-xl bg-muted/10 animate-in fade-in-50">
                     <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                         <LayoutDashboard className="h-10 w-10 text-primary/50" />
                     </div>
@@ -206,7 +203,7 @@ export default function DashboardPage() {
                     <p className="text-muted-foreground max-w-sm text-center mt-2 mb-6">
                         Comienza agregando widgets para visualizar tus datos importantes.
                     </p>
-                    <Button variant="outline" onClick={handleOpenBuilder}>
+                    <Button variant="outline" onClick={handleOpenBuilder} className="cursor-pointer">
                         <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
                         Crear mi primer Widget
                     </Button>

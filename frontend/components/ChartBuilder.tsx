@@ -555,7 +555,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                 </CardHeader>
                 <CardContent>
                     {loadingChart ? (
-                        <div className="flex h-[300px] items-center justify-center">
+                        <div className="flex h-[250px] items-center justify-center">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
                         </div>
                     ) : selectedDataset && chartData.length > 0 ? (
@@ -580,7 +580,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                             )}
                         </div>
                     ) : (
-                        <div className="flex h-[300px] flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed border-muted">
+                        <div className="flex h-[250px] flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed border-muted">
                             <Activity className="h-12 w-12 mb-3 opacity-20" />
                             <p>Selecciona un dataset y columnas para comenzar</p>
                         </div>

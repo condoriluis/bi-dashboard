@@ -82,7 +82,7 @@ export default function TransformationsPage() {
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-4">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-in slide-in-from-left duration-500">
                 <div className="space-y-1">
@@ -176,7 +176,7 @@ export default function TransformationsPage() {
                                 {user?.is_superuser && (
                                     <Button
                                         onClick={() => setDialogOpen(true)}
-                                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 w-full sm:w-auto dark:text-white justify-center"
+                                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 w-full sm:w-auto dark:text-white justify-center cursor-pointer"
                                     >
                                         <Plus className="mr-2 h-4 w-4" />
                                         <span className="hidden sm:inline">Nueva Transformación</span>

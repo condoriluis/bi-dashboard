@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Play, Terminal, AlertCircle, CheckCircle2, Code2, Clock, Database, Copy, Download, Wand2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Loader2, Play, Terminal, AlertCircle, CheckCircle2, Code2, Clock, Database, Copy, Download, Wand2, ChevronLeft, ChevronRight, Search, Eraser } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -152,6 +152,19 @@ export default function QueryPage() {
         }
     };
 
+    const handleClearQuery = () => {
+        setQuery("");
+        setResults([]);
+        setColumns([]);
+        setError("");
+        setSuccess(false);
+        setExecutionTime(null);
+        toast.success("Consulta limpiada");
+        if (textareaRef.current) {
+            textareaRef.current.focus();
+        }
+    };
+
     // Pagination Logic
     const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
     const paginatedResults = filteredResults.slice(
@@ -160,7 +173,7 @@ export default function QueryPage() {
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* Header */}
             <div className="space-y-1 animate-in slide-in-from-left duration-500">
                 <div className="flex items-center justify-between">
@@ -263,23 +276,34 @@ export default function QueryPage() {
                                 </Badge>
                             )}
                         </div>
-                        <Button
-                            onClick={handleExecute}
-                            disabled={loading || !query.trim()}
-                            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg shadow-blue-500/30 dark:text-white"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Ejecutando...
-                                </>
-                            ) : (
-                                <>
-                                    <Play className="mr-2 h-4 w-4" />
-                                    Ejecutar Consulta
-                                </>
-                            )}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={handleClearQuery}
+                                disabled={loading || !query.trim()}
+                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                            >
+                                <Eraser className="mr-2 h-4 w-4" />
+                                Limpiar
+                            </Button>
+                            <Button
+                                onClick={handleExecute}
+                                disabled={loading || !query.trim()}
+                                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg shadow-blue-500/30 dark:text-white cursor-pointer"
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Ejecutando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="mr-2 h-4 w-4" />
+                                        Ejecutar Consulta
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Error Message */}

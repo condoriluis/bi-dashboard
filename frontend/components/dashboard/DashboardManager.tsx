@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,21 @@ interface DashboardManagerProps {
 }
 
 export function DashboardManager({ open, onOpenChange, onDashboardCreated, mode, currentDashboard }: DashboardManagerProps) {
-    const [name, setName] = useState(currentDashboard?.name || "");
-    const [description, setDescription] = useState(currentDashboard?.description || "");
+    const [name, setName] = useState("");
+    const [description, setDescription] = useState("");
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            if (mode === 'edit' && currentDashboard) {
+                setName(currentDashboard.name || "");
+                setDescription(currentDashboard.description || "");
+            } else if (mode === 'create') {
+                setName("");
+                setDescription("");
+            }
+        }
+    }, [open, mode, currentDashboard]);
 
     const handleSubmit = async () => {
         if (mode === 'create' && !name.trim()) {
