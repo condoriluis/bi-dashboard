@@ -552,7 +552,6 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                         <SelectItem value="COUNT">Contar Registros</SelectItem>
                                         <SelectItem value="SUM">Suma</SelectItem>
                                         <SelectItem value="AVG">Promedio</SelectItem>
-                                        <SelectItem value="AVG">Promedio</SelectItem>
                                         <SelectItem value="MAX">Máximo</SelectItem>
                                         <SelectItem value="MIN">Mínimo</SelectItem>
                                     </SelectContent>
