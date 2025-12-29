@@ -815,7 +815,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                                     Resultado de la Transformación
                                                 </CardTitle>
                                                 <CardDescription className="mt-1">
-                                                    Vista previa de los primeros 10 registros transformados
+                                                    Vista previa de los primeros {previewData.length} registros transformados
                                                 </CardDescription>
                                             </div>
                                             <Badge variant="secondary" className="text-sm px-3 py-1">

@@ -53,7 +53,7 @@ export function buildSecureQuery(config: WidgetConfig) {
   const query: any = {
     table: config.dataset,
     columns: [],
-    limit: config.limit || 100
+    limit: config.limit !== undefined ? config.limit : 100
   };
 
   // Metric Widget
@@ -137,7 +137,7 @@ export function buildSecureQuery(config: WidgetConfig) {
       }];
     }
 
-    query.limit = config.limit || 10;
+    query.limit = config.limit !== undefined ? config.limit : 10;
   }
   // Map Widget
   else if (config.type === 'map') {
@@ -155,7 +155,7 @@ export function buildSecureQuery(config: WidgetConfig) {
 
     query.where = [];
 
-    query.limit = config.limit || 1000;
+    query.limit = config.limit !== undefined ? config.limit : 1000;
   }
 
   return query;

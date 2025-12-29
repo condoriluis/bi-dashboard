@@ -171,7 +171,7 @@ export default function QueryPage() {
     );
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-x-hidden">
             {/* Header */}
             <div className="space-y-1 animate-in slide-in-from-left duration-500">
                 <div className="flex items-center justify-between">
@@ -367,41 +367,40 @@ export default function QueryPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="rounded-lg border border-border/50 overflow-hidden">
-                            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                                <Table>
-                                    <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur-sm z-10">
-                                        <TableRow>
-                                            <TableHead className="w-[50px] font-semibold text-muted-foreground">#</TableHead>
+                        <div className="rounded-lg border border-border/50 overflow-auto max-h-[600px]">
+                            <Table className="min-w-full">
+                                <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur-sm z-10">
+                                    <TableRow>
+                                        <TableHead className="w-[50px] font-semibold text-muted-foreground">#</TableHead>
+                                        {columns.map((col) => (
+                                            <TableHead key={col} className="font-semibold whitespace-nowrap">
+                                                {col}
+                                            </TableHead>
+                                        ))}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedResults.map((row, idx) => (
+                                        <TableRow
+                                            key={idx}
+                                            className="hover:bg-accent/50 transition-colors"
+                                        >
+                                            <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{((currentPage - 1) * itemsPerPage) + idx + 1}</TableCell>
                                             {columns.map((col) => (
-                                                <TableHead key={col} className="font-semibold whitespace-nowrap">
-                                                    {col}
-                                                </TableHead>
+                                                <TableCell
+                                                    key={col}
+                                                    className={`font-mono text-sm whitespace-nowrap ${row[col] === null ? 'text-muted-foreground italic' : ''
+                                                        }`}
+                                                >
+                                                    {row[col] === null ? 'NULL' : String(row[col])}
+                                                </TableCell>
                                             ))}
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {paginatedResults.map((row, idx) => (
-                                            <TableRow
-                                                key={idx}
-                                                className="hover:bg-accent/50 transition-colors"
-                                            >
-                                                <TableCell className="text-muted-foreground text-xs">{((currentPage - 1) * itemsPerPage) + idx + 1}</TableCell>
-                                                {columns.map((col) => (
-                                                    <TableCell
-                                                        key={col}
-                                                        className={`font-mono text-sm ${row[col] === null ? 'text-muted-foreground italic' : ''
-                                                            }`}
-                                                    >
-                                                        {row[col] === null ? 'NULL' : String(row[col])}
-                                                    </TableCell>
-                                                ))}
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
+
 
                         {/* Pagination Controls */}
                         <div className="flex flex-col sm:flex-row items-center justify-between px-2 pt-4 gap-4">
@@ -454,22 +453,25 @@ export default function QueryPage() {
                         </div>
                     </CardContent>
                 </Card>
-            )}
+            )
+            }
 
             {/* Empty State */}
-            {!loading && !error && results.length === 0 && success && (
-                <Card className="border-dashed border-2 border-primary/20 animate-in fade-in-50">
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Database className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-lg font-medium text-muted-foreground mb-1">
-                            Sin resultados
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            La consulta se ejecutó correctamente pero no devolvió filas.
-                        </p>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
+            {
+                !loading && !error && results.length === 0 && success && (
+                    <Card className="border-dashed border-2 border-primary/20 animate-in fade-in-50">
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                            <Database className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                            <p className="text-lg font-medium text-muted-foreground mb-1">
+                                Sin resultados
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                La consulta se ejecutó correctamente pero no devolvió filas.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )
+            }
+        </div >
     );
 }

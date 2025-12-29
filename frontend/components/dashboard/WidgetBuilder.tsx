@@ -36,9 +36,9 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
     const [xAxis, setXAxis] = useState("");
     const [breakdown, setBreakdown] = useState("");
     const [yAxis, setYAxis] = useState("");
-    const [aggregation, setAggregation] = useState<WidgetConfig['aggregation']>("COUNT");
-    const [colSpan, setColSpan] = useState<number>(2);
-    const [limit, setLimit] = useState<number>(10);
+    const [aggregation, setAggregation] = useState<WidgetConfig['aggregation']>("NONE");
+    const [colSpan, setColSpan] = useState<number>(1);
+    const [limit, setLimit] = useState<number>(0);
     const [color, setColor] = useState<string>("default");
     const [orderBy, setOrderBy] = useState<string>("");
     const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>("ASC");
@@ -57,9 +57,9 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
             setXAxis(initialConfig.xAxis || "");
             setBreakdown(initialConfig.breakdown || "");
             setYAxis(initialConfig.yAxis || "");
-            setAggregation(initialConfig.aggregation || "COUNT");
+            setAggregation(initialConfig.aggregation || "NONE");
             setColSpan(initialConfig.colSpan || (initialConfig.type === 'metric' ? 1 : initialConfig.type === 'map' ? 2 : 2));
-            setLimit(initialConfig.limit || 10);
+            setLimit(initialConfig.limit !== undefined ? initialConfig.limit : 0);
             setColor(initialConfig.color || "default");
             setOrderBy(initialConfig.orderBy || "");
             setOrderDirection(initialConfig.orderDirection || "ASC");
@@ -137,9 +137,9 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
         setXAxis("");
         setBreakdown("");
         setYAxis("");
-        setAggregation("COUNT");
-        setColSpan(2);
-        setLimit(10);
+        setAggregation("NONE");
+        setColSpan(1);
+        setLimit(0);
         setColor("default");
         setOrderBy("");
         setOrderDirection("ASC");
@@ -409,6 +409,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                         <SelectValue placeholder="Cantidad de puntos" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="0">Sin límite (Todos los datos)</SelectItem>
                                         <SelectItem value="10">Top 10</SelectItem>
                                         <SelectItem value="50">Top 50</SelectItem>
                                         <SelectItem value="100">Top 100</SelectItem>
@@ -577,6 +578,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                         <SelectValue placeholder="Cantidad de puntos" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="0">Sin límite (Todos los datos)</SelectItem>
                                         <SelectItem value="10">Top 10</SelectItem>
                                         <SelectItem value="20">Top 20</SelectItem>
                                         <SelectItem value="50">Top 50</SelectItem>
@@ -660,6 +662,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                         <SelectValue placeholder="Seleccionar cantidad" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="0">Sin límite (Todos los datos)</SelectItem>
                                         <SelectItem value="10">10 Registros</SelectItem>
                                         <SelectItem value="50">50 Registros</SelectItem>
                                         <SelectItem value="100">100 Registros</SelectItem>

@@ -184,9 +184,25 @@ def list_server_files(
     """
     List available files in the uploads directory for import.
     """
+    return data_loader.list_server_files()
+@router.get("/{table_name}/columns")
+def list_dataset_columns(
+    table_name: str,
+    current_user: User = Depends(deps.get_current_user)
+) -> List[str]:
+    """
+    Get the list of column names for a specific dataset.
+    """
     try:
-        return data_loader.list_server_files()
+        from app.infra.database import db
+        conn = db.get_connection()
+        try:
+            query = f'DESCRIBE "{table_name}"'
+            result = conn.execute(query).df()
+            return result['column_name'].tolist()
+        finally:
+            conn.close()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list server files: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Dataset {table_name} not found or inaccessible: {str(e)}")
 
 

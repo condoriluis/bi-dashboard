@@ -18,6 +18,7 @@ import {
     Sun,
     Maximize2,
     Minimize2,
+    Brain,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -64,6 +65,7 @@ export default function Sidebar() {
         { href: "/dashboard/datasets", label: "Datasets", icon: Database },
         { href: "/dashboard/transformations", label: "Transformaciones", icon: Workflow },
         { href: "/dashboard/query", label: "SQL", icon: Terminal },
+        { href: "/dashboard/ai", label: "IA Predictiva", icon: Brain },
         { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
         { href: "/dashboard/converter", label: "Convertidor", icon: FileInput },
         { href: `${baseUrl}/docs`, label: "API", icon: BookOpen, external: true },

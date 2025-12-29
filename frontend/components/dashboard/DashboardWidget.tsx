@@ -109,7 +109,15 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
     }
 
     if (error) {
-        const errorDetail = (error as any)?.response?.data?.detail || "Error al obtener datos";
+        let errorDetail = (error as any)?.response?.data?.detail;
+
+        if (typeof errorDetail === 'object' && errorDetail !== null) {
+            errorDetail = JSON.stringify(errorDetail, null, 2);
+        } else if (!errorDetail) {
+            errorDetail = "Error al obtener datos";
+        }
+
+        errorDetail = String(errorDetail);
 
         const isMissingTable = errorDetail.includes("does not exist") || errorDetail.includes("Catalog Error");
 

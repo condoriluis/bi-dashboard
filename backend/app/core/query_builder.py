@@ -152,15 +152,34 @@ class SecureQueryBuilder:
     
     def _sanitize_identifier(self, identifier: str) -> str:
         """
-        Sanitize SQL identifiers (table names, column names).
-        Only allows alphanumeric characters and underscores.
+        Sanitize and quote SQL identifiers (table names, column names).
+        Supports identifiers with spaces and special characters by properly quoting them.
+        Prevents SQL injection by escaping quotes and validating for dangerous patterns.
         """
         if not identifier:
             raise ValueError("Identifier cannot be empty")
+            
+        dangerous_patterns = [
+            r'--',           # SQL comments
+            r'/\*',          # Multi-line comment start
+            r'\*/',          # Multi-line comment end
+            r';',            # Statement terminator
+            r'\bDROP\b',     # DROP statements
+            r'\bDELETE\b',   # DELETE statements
+            r'\bUPDATE\b',   # UPDATE statements
+            r'\bINSERT\b',   # INSERT statements
+            r'\bEXEC\b',     # EXEC statements
+            r'\bEXECUTE\b',  # EXECUTE statements
+        ]
         
-        if not re.match(r'^[a-zA-Z0-9_\.]+$', identifier):
-            raise ValueError(f"Invalid identifier: '{identifier}'. Only alphanumeric characters, underscores, and dots are allowed.")
+        for pattern in dangerous_patterns:
+            if re.search(pattern, identifier, re.IGNORECASE):
+                raise ValueError(f"Invalid identifier: '{identifier}'. Contains dangerous SQL pattern.")
         
-        return identifier
+        if re.match(r'^[a-zA-Z0-9_\.]+$', identifier):
+            return identifier
+        
+        escaped_identifier = identifier.replace('"', '""')
+        return f'"{escaped_identifier}"'
     
 

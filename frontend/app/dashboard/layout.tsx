@@ -67,10 +67,10 @@ export default function DashboardLayout({
             <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 dark:from-zinc-950 dark:via-blue-950/10 dark:to-purple-950/10">
                 <Sidebar />
                 <div className={cn(
-                    "flex-1 flex flex-col transition-all duration-300",
+                    "flex-1 flex flex-col transition-all duration-300 min-w-0",
                     isFullscreen ? "lg:ml-0" : "lg:ml-16"
                 )}>
-                    <main className="flex-1 w-full max-w-8xl mx-auto px-4 sm:px-4 lg:px-4 py-3 pb-32 animate-in fade-in-50 duration-500">
+                    <main className="flex-1 w-full max-w-8xl mx-auto px-4 sm:px-4 lg:px-4 py-3 pb-32 animate-in fade-in-50 duration-500 min-w-0">
                         {children}
                     </main>
                     <Footer />

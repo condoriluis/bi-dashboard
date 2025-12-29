@@ -35,7 +35,7 @@ def execute_sql(
         raise HTTPException(status_code=400, detail="Multiple statements (semicolons) are not allowed in Sandbox.")
 
     try:
-        
+
         cursor = db_conn.execute(sql)
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
@@ -45,6 +45,75 @@ def execute_sql(
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Query execution failed: {str(e)}")
+
+def _auto_quote_identifiers(sql: str, db_conn) -> str:
+    """
+    Automatically quote identifiers (column/table names) that contain spaces.
+    Uses context-aware token parsing to avoid quoting keywords and aliases.
+    """
+    import re
+    
+    # SQL keywords
+    sql_keywords = {
+        'SELECT', 'FROM', 'WHERE', 'GROUP', 'BY', 'ORDER', 'AS', 'ASC', 'DESC',
+        'MAX', 'MIN', 'SUM', 'AVG', 'COUNT', 'DISTINCT', 'ALL',
+        'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'CROSS', 'ON', 'USING',
+        'AND', 'OR', 'NOT', 'IN', 'LIKE', 'BETWEEN', 'IS', 'NULL',
+        'LIMIT', 'OFFSET', 'HAVING', 'UNION', 'INTERSECT', 'EXCEPT',
+        'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'CAST', 'OVER', 'PARTITION'
+    }
+    
+    # Tokenize SQL
+    tokens = re.findall(r'"[^"]*"|\'[^\']*\'|\S+', sql)
+    
+    result_tokens = []
+    i = 0
+    
+    while i < len(tokens):
+        token = tokens[i]
+        
+        # Skip if already quoted
+        if token.startswith('"') or token.startswith("'"):
+            result_tokens.append(token)
+            i += 1
+            continue
+        
+        # Check if previous token was AS (this is an alias, don't quote)
+        if result_tokens and result_tokens[-1].upper() == 'AS':
+            result_tokens.append(token)
+            i += 1
+            continue
+        
+        # Try to build multi-word identifier
+        if i + 1 < len(tokens) and re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', token):
+            multi_word = token
+            j = i + 1
+            
+            while j < len(tokens):
+                next_token = tokens[j]
+                # Stop at keywords, operators, or already quoted strings
+                if (next_token.upper() in sql_keywords or 
+                    next_token in ['(', ')', ',', ';', '=', '<', '>', '!', '+', '-', '*', '/'] or
+                    next_token.startswith('"') or next_token.startswith("'")):
+                    break
+                # Add to multi-word if it's a valid identifier part
+                if re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', next_token):
+                    multi_word += ' ' + next_token
+                    j += 1
+                else:
+                    break
+            
+            # If we found multi-word, quote it
+            if j > i + 1:
+                result_tokens.append(f'"{multi_word}"')
+                i = j
+                continue
+        
+        # Single token
+        result_tokens.append(token)
+        i += 1
+    
+    return ' '.join(result_tokens)
 
 
 from app.schemas.query_builder import QueryBuilderRequest

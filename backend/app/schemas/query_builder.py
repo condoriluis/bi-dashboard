@@ -51,10 +51,10 @@ class QueryBuilderRequest(BaseModel):
     where: Optional[List[WhereCondition]] = None
     groupBy: Optional[List[str]] = None
     orderBy: Optional[List[OrderBy]] = None
-    limit: Optional[int] = Field(default=None, ge=1, le=10000)
+    limit: Optional[int] = Field(default=None, ge=0, le=10000)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "table": "ventas_depto",
                 "columns": [
