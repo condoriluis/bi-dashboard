@@ -6,11 +6,18 @@ import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Workflow, Plus, Trash2, Edit, Eye, Database, Filter, FilterX, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Workflow, Plus, Trash2, Edit, Eye, Database, Filter, FilterX, Search, ChevronLeft, ChevronRight, Table as TableIcon, Sparkles } from "lucide-react";
 import { useAuth } from "@/features/auth/auth-context";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { DashboardBadge } from "@/components/dashboard/DashboardBadge";
 import TransformationDialog from "@/components/transformations/TransformationDialog";
+import TableCreationDialog from "@/components/transformations/TableCreationDialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,6 +28,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Transformation {
     id: number;
@@ -33,6 +41,15 @@ interface Transformation {
     updated_at: string;
 }
 
+interface Dataset {
+    table_name: string;
+    filename: string;
+    extension: string;
+    upload_date: string | null;
+    source_table?: string;
+    dashboard_id?: string | null;
+}
+
 export default function TransformationsPage() {
     const { user } = useAuth();
     const { getDatasetsUsedByCurrentDashboard, currentDashboard } = useDashboard();
@@ -42,16 +59,29 @@ export default function TransformationsPage() {
     const [initialAutoRun, setInitialAutoRun] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [transformationToDelete, setTransformationToDelete] = useState<number | null>(null);
+    const [deleteDatasetDialogOpen, setDeleteDatasetDialogOpen] = useState(false);
+    const [datasetToDelete, setDatasetToDelete] = useState<string | null>(null);
     const [showOnlyDashboardTransformations, setShowOnlyDashboardTransformations] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(9);
 
-    const { data: transformations, isLoading } = useQuery({
+    const [activeTab, setActiveTab] = useState("views");
+    const [tableDialogOpen, setTableDialogOpen] = useState(false);
+
+    const { data: transformations, isLoading: isLoadingTransformations } = useQuery({
         queryKey: ["transformations"],
         queryFn: async () => {
             const res = await api.get("/transformations/");
             return res.data as Transformation[];
+        }
+    });
+
+    const { data: datasets, isLoading: isLoadingDatasets } = useQuery({
+        queryKey: ["datasets"],
+        queryFn: async () => {
+            const res = await api.get("/datasets/");
+            return res.data as Dataset[];
         }
     });
 
@@ -67,6 +97,18 @@ export default function TransformationsPage() {
         }
     });
 
+    const deleteDatasetMutation = useMutation({
+        mutationFn: async (tableName: string) => {
+            await api.delete(`/datasets/${tableName}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["datasets"] });
+            queryClient.invalidateQueries({ queryKey: ["transformations"] });
+            setDeleteDatasetDialogOpen(false);
+            setDatasetToDelete(null);
+        }
+    });
+
     const handleEdit = (transformation: Transformation, autoRun: boolean = false) => {
         setEditingTransformation(transformation);
         setInitialAutoRun(autoRun);
@@ -78,11 +120,64 @@ export default function TransformationsPage() {
         setDeleteDialogOpen(true);
     };
 
+    const handleDeleteDataset = (tableName: string) => {
+        setDatasetToDelete(tableName);
+        setDeleteDatasetDialogOpen(true);
+    };
+
     const handleDialogClose = () => {
         setDialogOpen(false);
         setEditingTransformation(null);
         setInitialAutoRun(false);
     };
+
+    // Derived state for filtering
+    const allTransformations = transformations || [];
+    const allDatasets = datasets || [];
+    const dashboardDatasets = getDatasetsUsedByCurrentDashboard();
+
+    const normalize = (str: string) => str.toLowerCase();
+    const query = normalize(searchQuery);
+
+    // Calculate lists independently to avoid render errors during tab switching animations
+    const filteredTransformations = allTransformations.filter(t => {
+        const viewName = t.name;
+        if (showOnlyDashboardTransformations) {
+            const isUsed = dashboardDatasets.includes(viewName);
+            const isLinked = t.dashboard_id === currentDashboard?.id;
+            if (!isUsed && !isLinked) return false;
+        }
+        if (searchQuery) {
+            return normalize(t.name).includes(query) ||
+                normalize(t.source_table).includes(query) ||
+                (t.description && normalize(t.description).includes(query));
+        }
+        return true;
+    });
+
+    const filteredDatasets = allDatasets.filter(d => {
+        if (d.extension?.toLowerCase() === 'view') return false; //
+
+        if (showOnlyDashboardTransformations) {
+            const isUsed = dashboardDatasets.includes(d.table_name);
+            const isLinked = d.dashboard_id === currentDashboard?.id;
+            if (!isUsed && !isLinked) return false;
+        }
+        if (searchQuery) {
+            return normalize(d.filename).includes(query) ||
+                normalize(d.table_name).includes(query);
+        }
+        return true;
+    });
+
+    const activeList = activeTab === "views" ? filteredTransformations : filteredDatasets;
+    const totalPages = Math.ceil(activeList.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+
+    const paginatedTransformations = filteredTransformations.slice(startIndex, startIndex + itemsPerPage);
+    const paginatedDatasets = filteredDatasets.slice(startIndex, startIndex + itemsPerPage);
+
+    const isLoading = activeTab === "views" ? isLoadingTransformations : isLoadingDatasets;
 
     return (
         <div className="space-y-4">
@@ -101,356 +196,390 @@ export default function TransformationsPage() {
                 </div>
             </div>
 
-            {/* Filter and Search Bar */}
-            {!isLoading && (() => {
-                const allTransformations = transformations || [];
-                const dashboardDatasets = getDatasetsUsedByCurrentDashboard();
-                const filteredCount = allTransformations.filter(t => {
-                    const viewName = t.name;
-                    if (showOnlyDashboardTransformations) {
-                        const isUsed = dashboardDatasets.includes(viewName);
-                        const isLinked = t.dashboard_id === currentDashboard?.id;
-                        if (!isUsed && !isLinked) return false;
-                    }
-                    if (searchQuery) {
-                        const normalize = (str: string) => str.toLowerCase();
-                        const query = normalize(searchQuery);
-                        return normalize(t.name).includes(query) ||
-                            normalize(t.source_table).includes(query) ||
-                            (t.description && normalize(t.description).includes(query));
-                    }
-                    return true;
-                }).length;
+            <div className="space-y-3">
+                <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }} className="space-y-2">
+                    <TabsList className="bg-background/60 backdrop-blur-md border">
+                        <TabsTrigger value="views" className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-purple-500" />
+                            Vistas
+                        </TabsTrigger>
+                        <TabsTrigger value="tables" className="flex items-center gap-2">
+                            <TableIcon className="h-4 w-4 text-primary" />
+                            Tablas
+                        </TabsTrigger>
+                    </TabsList>
 
-                // Reset to page 1 when filters change
-                const filterKey = `${showOnlyDashboardTransformations}-${searchQuery}`;
-                if (typeof window !== 'undefined') {
-                    const prevFilterKey = (window as any).__prevFilterKey;
-                    if (prevFilterKey !== filterKey) {
-                        setCurrentPage(1);
-                        (window as any).__prevFilterKey = filterKey;
-                    }
-                }
+                    {/* Search and Filter Bar */}
+                    <div className="flex flex-col sm:flex-row justify-between gap-3">
+                        {/* Search Input */}
+                        <div className="relative w-full sm:w-80">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                            <Input
+                                placeholder={activeTab === "views" ? "Buscar transformaciones..." : "Buscar tablas..."}
+                                value={searchQuery}
+                                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                className="pl-9 border-primary/20 focus:border-primary bg-background/50 backdrop-blur-sm"
+                            />
+                        </div>
 
-                return (
-                    <div className="space-y-3">
                         {/* Count Display */}
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground self-center">
                             {showOnlyDashboardTransformations || searchQuery ? (
                                 <span>
-                                    Mostrando <span className="font-semibold text-foreground">{filteredCount}</span> de{" "}
-                                    <span className="font-semibold text-foreground">{allTransformations.length}</span> transformaciones
+                                    Mostrando <span className="font-semibold text-foreground">{activeList.length}</span> de{" "}
+                                    <span className="font-semibold text-foreground">{activeTab === "views" ? allTransformations.length : allDatasets.filter(d => d.extension !== 'view').length}</span> elementos
                                 </span>
                             ) : (
                                 <span>
-                                    <span className="font-semibold text-foreground">{allTransformations.length}</span> transformaciones totales
+                                    <span className="font-semibold text-foreground">{activeTab === "views" ? allTransformations.length : allDatasets.filter(d => d.extension !== 'view').length}</span> elementos totales
                                 </span>
                             )}
                         </div>
 
-                        {/* Search and Filter Bar */}
-                        <div className="flex flex-col sm:flex-row justify-between gap-3">
-                            {/* Search Input */}
-                            <div className="relative w-full sm:w-80">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                                <Input
-                                    placeholder="Buscar transformaciones..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 border-primary/20 focus:border-primary bg-background/50 backdrop-blur-sm"
-                                />
-                            </div>
-
-                            {/* Filter and Action Buttons */}
-                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-                                <Button
-                                    variant={showOnlyDashboardTransformations ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setShowOnlyDashboardTransformations(!showOnlyDashboardTransformations)}
-                                    className="w-full sm:w-auto justify-center"
-                                >
-                                    {showOnlyDashboardTransformations ? (
-                                        <><Filter className="h-4 w-4 mr-2" /> <span className="hidden sm:inline">Solo de este Dashboard</span><span className="sm:hidden">Este Dashboard</span></>
-                                    ) : (
-                                        <><FilterX className="h-4 w-4 mr-2" /> <span className="hidden sm:inline">Todas las Transformaciones</span><span className="sm:hidden">Todas</span></>
-                                    )}
-                                </Button>
-
-                                {user?.is_superuser && (
-                                    <Button
-                                        onClick={() => setDialogOpen(true)}
-                                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 w-full sm:w-auto dark:text-white justify-center cursor-pointer"
-                                    >
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        <span className="hidden sm:inline">Nueva Transformación</span>
-                                        <span className="sm:hidden">Nueva</span>
-                                    </Button>
+                        {/* Filter and Action Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                            <Button
+                                variant={showOnlyDashboardTransformations ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => { setShowOnlyDashboardTransformations(!showOnlyDashboardTransformations); setCurrentPage(1); }}
+                                className="w-full sm:w-auto justify-center"
+                            >
+                                {showOnlyDashboardTransformations ? (
+                                    <><Filter className="h-4 w-4 mr-2" /> <span className="hidden sm:inline">Solo de este Dashboard</span><span className="sm:hidden">Este Dashboard</span></>
+                                ) : (
+                                    <><FilterX className="h-4 w-4 mr-2" /> <span className="hidden sm:inline">Todos los Elementos</span><span className="sm:hidden">Todos</span></>
                                 )}
-                            </div>
+                            </Button>
+
+                            {user?.is_superuser && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 w-full sm:w-auto dark:text-white justify-center cursor-pointer"
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            <span className="hidden sm:inline">Crear Nuevo</span>
+                                            <span className="sm:hidden">Nuevo</span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => setDialogOpen(true)} className="cursor-pointer">
+                                            <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
+                                            Nueva Vista
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setTableDialogOpen(true)} className="cursor-pointer">
+                                            <TableIcon className="mr-2 h-4 w-4 text-blue-500" />
+                                            Nueva Tabla
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
                         </div>
                     </div>
-                );
-            })()}
 
-            {/* Transformations Grid */}
-            {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : (() => {
-                const dashboardDatasets = getDatasetsUsedByCurrentDashboard();
-                const filteredTransformations = transformations?.filter(t => {
-                    const viewName = t.name;
-                    if (showOnlyDashboardTransformations) {
-                        const isUsed = dashboardDatasets.includes(viewName);
-                        const isLinked = t.dashboard_id === currentDashboard?.id;
-                        if (!isUsed && !isLinked) return false;
-                    }
-                    if (searchQuery) {
-                        const normalize = (str: string) => str.toLowerCase();
-                        const query = normalize(searchQuery);
-                        return normalize(t.name).includes(query) ||
-                            normalize(t.source_table).includes(query) ||
-                            (t.description && normalize(t.description).includes(query));
-                    }
-                    return true;
-                }) || [];
+                    {/* Content Grid - Views */}
+                    <TabsContent value="views" className="space-y-6 mt-0">
+                        {isLoadingTransformations ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        ) : filteredTransformations.length > 0 ? (
+                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                                {paginatedTransformations.map((transformation) => {
+                                    const viewName = transformation.name;
+                                    const isUsedInDashboard = dashboardDatasets.includes(viewName);
 
-                // Pagination logic
-                const totalPages = Math.ceil(filteredTransformations.length / itemsPerPage);
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const paginatedTransformations = filteredTransformations.slice(startIndex, endIndex);
+                                    return (
+                                        <Card
+                                            key={transformation.id}
+                                            className="relative overflow-hidden border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 group bg-gradient-to-br from-card via-card to-muted/20"
+                                        >
+                                            <div className="absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl rounded-full bg-primary transition-opacity duration-500 group-hover:opacity-20" />
 
-                return filteredTransformations.length > 0 ? (
-                    <div className="space-y-6">
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {paginatedTransformations.map((transformation) => {
-                                const viewName = transformation.name;
-                                const isUsedInDashboard = dashboardDatasets.includes(viewName);
-
-                                return (
-                                    <Card
-                                        key={transformation.id}
-                                        className="relative overflow-hidden border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 group bg-gradient-to-br from-card via-card to-muted/20"
-                                    >
-                                        <div className="absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl rounded-full bg-primary transition-opacity duration-500 group-hover:opacity-20" />
-
-                                        <CardHeader className="relative z-10 pb-3">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                                        <Workflow className="h-5 w-5" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <CardTitle className="text-base font-semibold">
-                                                                {transformation.name}
-                                                            </CardTitle>
-                                                            {isUsedInDashboard && (
-                                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" title="Usado en este dashboard">
-                                                                    En uso
-                                                                </span>
-                                                            )}
+                                            <CardHeader className="relative z-10 pb-3">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                            <Workflow className="h-5 w-5" />
                                                         </div>
-                                                        <CardDescription className="text-xs mt-1">
-                                                            <Database className="inline h-3 w-3 mr-1" />
-                                                            {transformation.source_table}
-                                                        </CardDescription>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <CardTitle className="text-base font-semibold">
+                                                                    {transformation.name}
+                                                                </CardTitle>
+                                                                <span className="rounded-full inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                                                    Vista
+                                                                </span>
+                                                                {isUsedInDashboard && (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" title="Usado en este dashboard">
+                                                                        En uso
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <CardDescription className="text-xs mt-1">
+                                                                <Database className="inline h-3 w-3 mr-1" />
+                                                                {transformation.source_table}
+                                                            </CardDescription>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </CardHeader>
+                                            </CardHeader>
 
-                                        <CardContent className="relative z-10 space-y-3">
-                                            {transformation.description && (
-                                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                                    {transformation.description}
-                                                </p>
-                                            )}
+                                            <CardContent className="relative z-10 space-y-3">
+                                                {transformation.description && (
+                                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                                        {transformation.description}
+                                                    </p>
+                                                )}
 
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleEdit(transformation, true)}
-                                                    className="flex-1 hover:bg-primary/10 cursor-pointer"
-                                                >
-                                                    <Eye className="h-3.5 w-3.5 mr-1.5" />
-                                                    Ver
-                                                </Button>
-                                                {user?.is_superuser && (
-                                                    <>
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleEdit(transformation, true)}
+                                                        className="flex-1 hover:bg-primary/10 cursor-pointer"
+                                                    >
+                                                        <Eye className="h-3.5 w-3.5 mr-1.5" />
+                                                        Ver
+                                                    </Button>
+                                                    {user?.is_superuser && (
+                                                        <>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleEdit(transformation)}
+                                                                className="hover:bg-primary/10"
+                                                            >
+                                                                <Edit className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(transformation.id)}
+                                                                className="hover:bg-destructive/10 hover:text-destructive"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <Card className="border-dashed border-2 border-primary/20">
+                                <CardContent className="flex flex-col items-center justify-center py-12">
+                                    <Workflow className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                                    <p className="text-lg font-medium text-muted-foreground mb-1">
+                                        No se encontraron vistas.
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </TabsContent>
+
+                    {/* Content Grid - Tables */}
+                    <TabsContent value="tables" className="space-y-6 mt-0">
+                        {isLoadingDatasets ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        ) : filteredDatasets.length > 0 ? (
+                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                                {paginatedDatasets.map((dataset) => {
+                                    const isUsedInDashboard = dashboardDatasets.includes(dataset.table_name);
+
+                                    return (
+                                        <Card
+                                            key={dataset.table_name}
+                                            className="relative overflow-hidden border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 group bg-gradient-to-br from-card via-card to-muted/20"
+                                        >
+                                            <div className="absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl rounded-full bg-blue-500 transition-opacity duration-500 group-hover:opacity-20" />
+
+                                            <CardHeader className="relative z-10 pb-3">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                                            <Database className="h-5 w-5" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <CardTitle className="text-base font-semibold truncate max-w-[180px]" title={dataset.table_name}>
+                                                                    {dataset.table_name}
+                                                                </CardTitle>
+                                                                <span className="rounded-full inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                                                    Tabla
+                                                                </span>
+                                                                {isUsedInDashboard && (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" title="Usado en este dashboard">
+                                                                        En uso
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <CardDescription className="text-xs mt-1 truncate max-w-[300px]" title={dataset.filename}>
+                                                                Archivo: {dataset.filename}
+                                                            </CardDescription>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+
+                                            <CardContent className="relative z-10 space-y-3">
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <div className="text-xs text-muted-foreground italic flex-1">
+                                                        Dataset base
+                                                    </div>
+                                                    {user?.is_superuser && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() => handleEdit(transformation)}
-                                                            className="hover:bg-primary/10"
-                                                        >
-                                                            <Edit className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleDelete(transformation.id)}
+                                                            onClick={() => handleDeleteDataset(dataset.table_name)}
                                                             className="hover:bg-destructive/10 hover:text-destructive"
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <Card className="border-dashed border-2 border-primary/20">
+                                <CardContent className="flex flex-col items-center justify-center py-12">
+                                    <Database className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                                    <p className="text-lg font-medium text-muted-foreground mb-1">
+                                        No se encontraron tablas.
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </TabsContent>
+                </Tabs>
+
+                {/* Pagination Controls - Shared or conditional */}
+                {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-primary/10">
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
+                            <span className="text-sm text-muted-foreground">Mostrar:</span>
+                            <select
+                                value={itemsPerPage}
+                                onChange={(e) => {
+                                    setItemsPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="px-3 py-1.5 text-sm border border-primary/20 rounded-md bg-background hover:bg-accent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            >
+                                <option value={6}>6</option>
+                                <option value={9}>9</option>
+                                <option value={12}>12</option>
+                                <option value={18}>18</option>
+                                <option value={24}>24</option>
+                            </select>
+                            <span className="text-sm text-muted-foreground">por página</span>
                         </div>
 
-                        {/* Pagination Controls */}
-                        {totalPages > 1 && (
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-primary/10">
-                                <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
-                                    <span className="text-sm text-muted-foreground">Mostrar:</span>
-                                    <select
-                                        value={itemsPerPage}
-                                        onChange={(e) => {
-                                            setItemsPerPage(Number(e.target.value));
-                                            setCurrentPage(1);
-                                        }}
-                                        className="px-3 py-1.5 text-sm border border-primary/20 rounded-md bg-background hover:bg-accent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    >
-                                        <option value={6}>6</option>
-                                        <option value={9}>9</option>
-                                        <option value={12}>12</option>
-                                        <option value={18}>18</option>
-                                        <option value={24}>24</option>
-                                    </select>
-                                    <span className="text-sm text-muted-foreground">por página</span>
-                                </div>
+                        {/* Page info and navigation wrapper */}
+                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto justify-center sm:justify-end">
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                Página <span className="font-semibold text-foreground">{currentPage}</span> de{" "}
+                                <span className="font-semibold text-foreground">{totalPages}</span>
+                            </span>
 
-                                {/* Page info and navigation wrapper */}
-                                <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto justify-center sm:justify-end">
-                                    <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                        Página <span className="font-semibold text-foreground">{currentPage}</span> de{" "}
-                                        <span className="font-semibold text-foreground">{totalPages}</span>
-                                    </span>
-
-                                    {/* Navigation buttons - Responsive layout */}
-                                    <div className="flex items-center justify-center gap-1 flex-wrap">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(1)}
-                                            disabled={currentPage === 1}
-                                            className="h-8 w-8 p-0 hidden sm:inline-flex"
-                                            title="Primera página"
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                            <ChevronLeft className="h-4 w-4 -ml-3" />
-                                        </Button>
-
-                                        {/* Previous page button */}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                            disabled={currentPage === 1}
-                                            className="h-8 w-8 p-0"
-                                            title="Página anterior"
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-
-                                        {/* Page numbers - Fewer on mobile */}
-                                        <div className="flex items-center gap-1">
-                                            {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                                .filter(page => {
-                                                    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-                                                    if (isMobile) {
-                                                        if (Math.abs(page - currentPage) <= 1) return true;
-                                                        return false;
-                                                    } else {
-                                                        if (page === 1 || page === totalPages) return true;
-                                                        if (Math.abs(page - currentPage) <= 1) return true;
-                                                        return false;
-                                                    }
-                                                })
-                                                .map((page, index, array) => {
-                                                    const prevPage = array[index - 1];
-                                                    const showEllipsis = prevPage && page - prevPage > 1;
-
-                                                    return (
-                                                        <div key={page} className="flex items-center gap-1">
-                                                            {showEllipsis && (
-                                                                <span className="px-1 sm:px-2 text-muted-foreground text-xs sm:text-sm">...</span>
-                                                            )}
-                                                            <Button
-                                                                variant={currentPage === page ? "default" : "outline"}
-                                                                size="sm"
-                                                                onClick={() => setCurrentPage(page)}
-                                                                className="h-8 w-8 p-0 text-xs sm:text-sm"
-                                                            >
-                                                                {page}
-                                                            </Button>
-                                                        </div>
-                                                    );
-                                                })}
-                                        </div>
-
-                                        {/* Next page button */}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                            disabled={currentPage === totalPages}
-                                            className="h-8 w-8 p-0"
-                                            title="Página siguiente"
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-
-                                        {/* Last page button - Hidden on small screens */}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(totalPages)}
-                                            disabled={currentPage === totalPages}
-                                            className="h-8 w-8 p-0 hidden sm:inline-flex"
-                                            title="Última página"
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                            <ChevronRight className="h-4 w-4 -ml-3" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <Card className="border-dashed border-2 border-primary/20">
-                        <CardContent className="flex flex-col items-center justify-center py-12">
-                            <Workflow className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                            <p className="text-lg font-medium text-muted-foreground mb-1">
-                                {searchQuery ? `No se encontraron resultados para "${searchQuery}"` :
-                                    showOnlyDashboardTransformations ? "No hay transformaciones en este dashboard" :
-                                        "No hay transformaciones"}
-                            </p>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                {searchQuery ? "Intenta con otros términos de búsqueda" :
-                                    showOnlyDashboardTransformations
-                                        ? "No hay transformaciones usadas en este dashboard"
-                                        : "Crea tu primera transformación para comenzar a modelar datos"}
-                            </p>
-                            {user?.is_superuser && !showOnlyDashboardTransformations && !searchQuery && (
-                                <Button onClick={() => setDialogOpen(true)}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Nueva Transformación
+                            {/* Navigation buttons - Responsive layout */}
+                            <div className="flex items-center justify-center gap-1 flex-wrap">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={currentPage === 1}
+                                    className="h-8 w-8 p-0 hidden sm:inline-flex"
+                                    title="Primera página"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                    <ChevronLeft className="h-4 w-4 -ml-3" />
                                 </Button>
-                            )}
-                        </CardContent>
-                    </Card>
-                );
-            })()}
+
+                                {/* Previous page button */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="h-8 w-8 p-0"
+                                    title="Página anterior"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+
+                                {/* Page numbers - Fewer on mobile */}
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter(page => {
+                                            const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+                                            if (isMobile) {
+                                                if (Math.abs(page - currentPage) <= 1) return true;
+                                                return false;
+                                            } else {
+                                                if (page === 1 || page === totalPages) return true;
+                                                if (Math.abs(page - currentPage) <= 1) return true;
+                                                return false;
+                                            }
+                                        })
+                                        .map((page, index, array) => {
+                                            const prevPage = array[index - 1];
+                                            const showEllipsis = prevPage && page - prevPage > 1;
+
+                                            return (
+                                                <div key={page} className="flex items-center gap-1">
+                                                    {showEllipsis && (
+                                                        <span className="px-1 sm:px-2 text-muted-foreground text-xs sm:text-sm">...</span>
+                                                    )}
+                                                    <Button
+                                                        variant={currentPage === page ? "default" : "outline"}
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(page)}
+                                                        className="h-8 w-8 p-0 text-xs sm:text-sm"
+                                                    >
+                                                        {page}
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+
+                                {/* Next page button */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="h-8 w-8 p-0"
+                                    title="Página siguiente"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+
+                                {/* Last page button - Hidden on small screens */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={currentPage === totalPages}
+                                    className="h-8 w-8 p-0 hidden sm:inline-flex"
+                                    title="Última página"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="h-4 w-4 -ml-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Dialogs */}
             <TransformationDialog
@@ -458,6 +587,11 @@ export default function TransformationsPage() {
                 onClose={handleDialogClose}
                 transformation={editingTransformation}
                 initialAutoRun={initialAutoRun}
+            />
+
+            <TableCreationDialog
+                open={tableDialogOpen}
+                onClose={() => setTableDialogOpen(false)}
             />
 
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -476,6 +610,27 @@ export default function TransformationsPage() {
                             className="bg-destructive hover:bg-destructive/90"
                         >
                             {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={deleteDatasetDialogOpen} onOpenChange={setDeleteDatasetDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar Tabla?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción eliminará permanentemente la tabla <b>{datasetToDelete}</b> y sus datos.
+                            Las vistas o widgets que dependan de esta tabla dejarán de funcionar.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => datasetToDelete && deleteDatasetMutation.mutate(datasetToDelete)}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {deleteDatasetMutation.isPending ? "Eliminando..." : "Eliminar"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

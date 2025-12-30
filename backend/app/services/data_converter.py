@@ -13,7 +13,7 @@ class DataConverter:
     def convert_to_parquet(self, input_path: str, file_type: str, output_path: str = None) -> str:
         """
         Converts various file formats to Parquet.
-        Supported formats: csv, json, xlsx, xls, avro, orc
+        Supported formats: csv, txt, json, xlsx, xls, avro, orc
         Returns the path to the generated Parquet file.
         """
         if not os.path.exists(input_path):
@@ -25,7 +25,7 @@ class DataConverter:
         self.logger.info(f"Converting {file_type.upper()} file {input_path} to {output_path}...")
 
         try:
-            if file_type == 'csv':
+            if file_type in ['csv', 'txt']:
                 self._convert_csv(input_path, output_path)
             elif file_type == 'json':
                 self._convert_json(input_path, output_path)
@@ -45,7 +45,7 @@ class DataConverter:
             raise e
 
     def _convert_csv(self, input_path: str, output_path: str):
-        """Convert CSV to Parquet using DuckDB"""
+        """Convert CSV/TXT to Parquet using DuckDB (auto-detects delimiter: comma, semicolon, tab, pipe, etc.)"""
         conn = duckdb.connect()
         try:
   

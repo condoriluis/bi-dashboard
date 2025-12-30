@@ -159,9 +159,8 @@ export default function Sidebar() {
                     "border-r-2 border-border/60 dark:border-border/80",
                     "shadow-2xl shadow-black/10 dark:shadow-black/30",
                     "transition-all duration-300 ease-in-out",
-                    isExpanded ? "w-72" : "w-16",
+                    isExpanded ? "w-70" : "w-16",
                     "before:absolute before:inset-0 before:bg-gradient-to-b before:from-blue-500/5 before:via-transparent before:to-purple-500/5 before:pointer-events-none before:opacity-50",
-                    // Fullscreen mode: hide sidebar
                     isFullscreen && "-translate-x-full"
                 )}
             >
@@ -185,7 +184,7 @@ export default function Sidebar() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                <nav className="flex-1 p-2 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     {navItems.map((item, index) => (
                         <div
                             key={item.href}
@@ -198,13 +197,13 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Bottom Actions */}
-                <div className="p-3 border-t-2 border-border/60 dark:border-border/80 space-y-2 bg-muted/20 dark:bg-muted/10">
+                <div className="p-2 border-t-2 border-border/60 dark:border-border/80 space-y-0 bg-muted/20 dark:bg-muted/10">
                     {/* Fullscreen Toggle */}
                     <SimpleTooltip content={isExpanded ? "" : isFullscreen ? "Mostrar Sidebar" : "Pantalla Completa"} side="right">
                         <button
                             onClick={toggleFullscreen}
                             className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 relative overflow-hidden group",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden group",
                                 "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:border hover:border-border/50"
                             )}
                         >
@@ -233,7 +232,7 @@ export default function Sidebar() {
                         <button
                             onClick={toggleTheme}
                             className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 relative overflow-hidden group",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden group",
                                 "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:border hover:border-border/50"
                             )}
                         >
@@ -256,7 +255,7 @@ export default function Sidebar() {
                         <SimpleTooltip content={isExpanded ? "" : "Perfil"} side="right">
                             <DialogTrigger asChild>
                                 <button className={cn(
-                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 relative overflow-hidden group",
+                                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative overflow-hidden group",
                                     "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:border hover:border-border/50"
                                 )}>
                                     <User className="h-5 w-5 flex-shrink-0" />

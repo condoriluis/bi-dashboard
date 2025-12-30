@@ -184,15 +184,15 @@ export default function ModelList() {
                 const { icon, color, label } = getModelIcon(model.model_type);
 
                 return (
-                    <Card key={model.id} className="group flex flex-col h-full border-primary/20 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden relative animate-in fade-in-50 slide-in-from-bottom duration-500 bg-card/50 backdrop-blur-sm">
-                        <div className="absolute top-0 right-0 p-4 flex gap-2 z-10">
+                    <Card key={model.id} className="group flex flex-col h-full border-primary/20 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden relative animate-in fade-in-50 slide-in-from-bottom duration-500 bg-card/50 backdrop-blur-sm pb-0">
+                        <div className="absolute top-0 right-0 p-2 flex gap-2 z-10">
                             <Badge variant="outline" className={`${color} bg-background/80 backdrop-blur-md border-current/20 shadow-sm`}>
                                 {label}
                             </Badge>
                             <StatusBadge status={model.status} />
                         </div>
 
-                        <CardHeader className="pb-2 relative overflow-hidden">
+                        <CardHeader className="pb-0 relative overflow-hidden">
 
                             <CardTitle className={`flex items-center gap-2 text-lg transition-colors ${color} pt-2`}>
                                 <div className="p-2 rounded-lg bg-background/50 shadow-sm border border-border/50">
@@ -206,7 +206,7 @@ export default function ModelList() {
                             </CardDescription>
                         </CardHeader>
 
-                        <CardContent className="space-y-4 flex-grow">
+                        <CardContent className="space-y-2 flex-grow">
                             <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div className="bg-background/40 p-2.5 rounded-lg border border-border/50">
                                     <span className="text-muted-foreground text-xs block mb-0.5">Objetivo</span>
@@ -259,14 +259,13 @@ export default function ModelList() {
                         </CardContent>
 
                         <CardFooter className="bg-muted/30 p-4 border-t border-border/50 grid gap-3">
-                            {/* Primary Actions - Full Width */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                                 <PredictionDialog model={model} />
                                 <BatchPredictionDialog model={model} />
                             </div>
 
                             {/* Secondary Actions - Right Aligned but adapted for mobile */}
-                            <div className="flex gap-2 w-full justify-between sm:justify-end items-center pt-1 border-t border-border/10 sm:border-t-0 sm:pt-0">
+                            <div className="flex gap-2 w-full justify-between sm:justify-end items-center pt-0 border-t border-border/10 sm:border-t-0 sm:pt-0">
                                 <span className="text-[10px] text-muted-foreground sm:hidden">Acciones de gestión</span>
                                 <div className="flex gap-1">
                                     <Button

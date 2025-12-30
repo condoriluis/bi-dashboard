@@ -7,37 +7,52 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Play, Terminal, AlertCircle, CheckCircle2, Code2, Clock, Database, Copy, Download, Wand2, ChevronLeft, ChevronRight, Search, Eraser } from "lucide-react";
+import { Loader2, Play, Terminal, AlertCircle, CheckCircle2, Code2, Clock, Database, Copy, Download, Wand2, ChevronLeft, ChevronRight, Search, Eraser, Shield, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const QUICK_COMMANDS = [
-    // Consultas Básicas
-    { label: "SELECT *", value: "SELECT * FROM " },
-    { label: "WHERE", value: "WHERE " },
-    { label: "LIMIT", value: "LIMIT 100" },
-    { label: "ORDER BY", value: "ORDER BY " },
-    // Agregaciones
-    { label: "GROUP BY", value: "GROUP BY " },
-    { label: "COUNT", value: "COUNT(*) " },
-    { label: "SUM", value: "SUM() " },
-    { label: "AVG", value: "AVG() " },
-    { label: "MAX", value: "MAX() " },
-    { label: "MIN", value: "MIN() " },
-    // Fechas (DuckDB)
-    { label: "DATE_TRUNC", value: "date_trunc('month', fecha) " },
-    { label: "YEAR", value: "year(fecha) " },
-    { label: "TODAY", value: "today() " },
-    // Lógica
-    { label: "CASE WHEN", value: "CASE WHEN cond THEN val ELSE other END " },
-    { label: "COALESCE", value: "COALESCE(val, default) " },
-    { label: "LIKE", value: "LIKE '%pattern%' " },
-    { label: "HAVING", value: "HAVING " },
-    // Joins & Utilidades
-    { label: "LEFT JOIN", value: "LEFT JOIN table ON " },
-    { label: "DESCRIBE", value: "DESCRIBE " },
-    { label: "SHOW TABLES", value: "SHOW TABLES" },
+    // Lectura - Básico
+    { label: "SELECT *", value: "SELECT * FROM ", mode: "read", group: "basic" },
+    { label: "LIMIT", value: "LIMIT 100", mode: "read", group: "basic" },
+    { label: "DISTINCT", value: "DISTINCT ", mode: "read", group: "basic" },
+    { label: "SHOW TABLES", value: "SHOW TABLES", mode: "read", group: "basic" },
+    { label: "DESCRIBE", value: "DESCRIBE ", mode: "read", group: "basic" },
+
+    // Lectura - Filtrado
+    { label: "WHERE", value: "WHERE ", mode: "read", group: "filter" },
+    { label: "ORDER BY", value: "ORDER BY ", mode: "read", group: "filter" },
+    { label: "LIKE", value: "LIKE '%patron%' ", mode: "read", group: "filter" },
+    { label: "BETWEEN", value: "BETWEEN val1 AND val2 ", mode: "read", group: "filter" },
+    { label: "IN", value: "IN (val1, val2) ", mode: "read", group: "filter" },
+
+    // Lectura - Agregación
+    { label: "COUNT", value: "COUNT(*) ", mode: "read", group: "agg" },
+    { label: "SUM", value: "SUM() ", mode: "read", group: "agg" },
+    { label: "AVG", value: "AVG() ", mode: "read", group: "agg" },
+    { label: "MIN", value: "MIN() ", mode: "read", group: "agg" },
+    { label: "MAX", value: "MAX() ", mode: "read", group: "agg" },
+    { label: "GROUP BY", value: "GROUP BY ", mode: "read", group: "agg" },
+    { label: "HAVING", value: "HAVING ", mode: "read", group: "agg" },
+
+    // Lectura - Joins
+    { label: "LEFT JOIN", value: "LEFT JOIN tabla ON ", mode: "read", group: "join" },
+    { label: "INNER JOIN", value: "INNER JOIN tabla ON ", mode: "read", group: "join" },
+
+    // Lectura - Funciones Tiempo
+    { label: "DATE_TRUNC", value: "date_trunc('month', fecha) ", mode: "read", group: "func" },
+    { label: "TODAY", value: "today() ", mode: "read", group: "func" },
+
+    // Escritura / Admin (Avanzado)
+    { label: "CREATE TABLE", value: "CREATE TABLE nombre_tabla (id INTEGER, nombre VARCHAR);", mode: "write", group: "admin" },
+    { label: "DROP TABLE", value: "DROP TABLE IF EXISTS nombre_tabla;", mode: "write", group: "admin" },
+    { label: "CREATE VIEW", value: "CREATE VIEW nombre_vista AS \nSELECT ...", mode: "write", group: "admin" },
+    { label: "DROP VIEW", value: "DROP VIEW IF EXISTS nombre_vista", mode: "write", group: "admin" },
+    { label: "INSERT", value: "INSERT INTO tabla (col1, col2) VALUES (val1, val2);", mode: "write", group: "write" },
+    { label: "UPDATE", value: "UPDATE tabla SET col = val WHERE cond;", mode: "write", group: "write" },
+    { label: "DELETE", value: "DELETE FROM tabla WHERE cond;", mode: "write", group: "write" },
 ];
 
 export default function QueryPage() {
@@ -50,12 +65,12 @@ export default function QueryPage() {
     const [success, setSuccess] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Pagination State
+    const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [searchQuery, setSearchQuery] = useState("");
 
-    // Filter results based on search query
     const filteredResults = results.filter(row => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
@@ -84,7 +99,10 @@ export default function QueryPage() {
         const startTime = performance.now();
 
         try {
-            const res = await api.post("/sql/execute", { query });
+            const res = await api.post("/sql/execute", {
+                query,
+                allow_unsafe: isAdvancedMode
+            });
             const endTime = performance.now();
             setExecutionTime(endTime - startTime);
 
@@ -170,6 +188,8 @@ export default function QueryPage() {
         currentPage * itemsPerPage
     );
 
+    const filteredCommands = QUICK_COMMANDS.filter(cmd => isAdvancedMode ? true : cmd.mode === 'read');
+
     return (
         <div className="space-y-4 overflow-x-hidden">
             {/* Header */}
@@ -179,9 +199,15 @@ export default function QueryPage() {
                         <h1 className="text-4xl font-bold">
                             Editor de Consultas SQL
                         </h1>
-                        <p className="text-muted-foreground mt-1">
-                            Ejecuta consultas SQL en tiempo real sobre tus datasets.
-                        </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
+                            <p className="text-muted-foreground">
+                                Ejecuta consultas SQL en tiempo real sobre tus datasets.
+                            </p>
+                            <Badge variant="outline" className="w-fit flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                                <AlertCircle className="h-3 w-3" />
+                                <span className="text-xs">Recomendación: Usa <span className="font-mono font-bold">LIMIT</span> para optimizar</span>
+                            </Badge>
+                        </div>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Badge className="px-3 py-1 bg-[#FFF000] text-black hover:bg-[#FFF000]/90 border-black/10 font-bold shadow-sm">
@@ -195,21 +221,45 @@ export default function QueryPage() {
             {/* Query Editor Card */}
             <Card className="border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom duration-500">
                 <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                         <div className="flex items-center space-x-3">
                             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
                                 <Code2 className="h-5 w-5 text-white" />
                             </div>
                             <div>
                                 <CardTitle>Editor de Consultas</CardTitle>
-                                <CardDescription>Escribe tu consulta SQL aquí</CardDescription>
+                                <CardDescription className="flex items-center gap-2">
+                                    Modo: <span className={cn("font-semibold", isAdvancedMode ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400")}>
+                                        {isAdvancedMode ? "Avanzado / Escritura" : "Lectura / Sandbox"}
+                                    </span>
+                                </CardDescription>
                             </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 text-xs rounded-full border border-yellow-400/20">
-                                <AlertCircle className="h-3 w-3" />
-                                <span>Modo Sandbox: Solo consultas de lectura (SELECT)</span>
-                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsAdvancedMode(!isAdvancedMode)}
+                                className={cn(
+                                    "transition-all duration-300 border cursor-pointer",
+                                    isAdvancedMode
+                                        ? "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 hover:text-orange-800 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-800"
+                                        : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800"
+                                )}
+                            >
+                                {isAdvancedMode ? (
+                                    <>
+                                        <ShieldAlert className="h-4 w-4 mr-2" />
+                                        Modo Escritura Activado
+                                    </>
+                                ) : (
+                                    <>
+                                        <Shield className="h-4 w-4 mr-2" />
+                                        Solo Lectura (Seguro)
+                                    </>
+                                )}
+                            </Button>
+
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -223,23 +273,68 @@ export default function QueryPage() {
                     </div>
 
                     {/* Quick Commands Toolbar */}
-                    <div className="flex flex-wrap gap-2 pt-2 pb-1">
-                        <div className="flex items-center mr-2 text-xs font-medium text-muted-foreground">
+                    <div className="space-y-2 pt-2 bg-muted/20 p-3 rounded-lg border border-border/50">
+                        <div className="flex items-center text-xs font-medium text-muted-foreground mb-2">
                             <Wand2 className="h-3.5 w-3.5 mr-1.5 text-purple-500" />
-                            Rápido:
+                            Comandos Rápidos (DuckDB):
                         </div>
-                        {QUICK_COMMANDS.map((cmd) => (
-                            <Badge
-                                key={cmd.label}
-                                variant="outline"
-                                className="cursor-pointer hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 active:scale-95 select-none py-1 group"
-                                onClick={() => insertAtCursor(cmd.value)}
-                            >
-                                <span className="text-primary/80 group-hover:text-primary font-mono text-[10px] sm:text-xs">
-                                    {cmd.label}
-                                </span>
-                            </Badge>
-                        ))}
+                        <div className="flex flex-wrap gap-2">
+                            {filteredCommands.map((cmd) => {
+                                // Define styles based on group
+                                let textColor = "text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100";
+                                let borderColor = "hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/20";
+
+                                switch (cmd.group) {
+                                    case 'basic':
+                                        // Cyan / Neutral
+                                        textColor = "text-cyan-600 dark:text-cyan-400 group-hover:text-cyan-700 dark:group-hover:text-cyan-300";
+                                        borderColor = "hover:border-cyan-200 dark:hover:border-cyan-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/20";
+                                        break;
+                                    case 'filter':
+                                        // Green / Teal
+                                        textColor = "text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300";
+                                        borderColor = "hover:border-emerald-200 dark:hover:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/20";
+                                        break;
+                                    case 'agg':
+                                        // Blue
+                                        textColor = "text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300";
+                                        borderColor = "hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/20";
+                                        break;
+                                    case 'join':
+                                        // Purple
+                                        textColor = "text-violet-600 dark:text-violet-400 group-hover:text-violet-700 dark:group-hover:text-violet-300";
+                                        borderColor = "hover:border-violet-200 dark:hover:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950/20";
+                                        break;
+                                    case 'func':
+                                        // Pink/Rose
+                                        textColor = "text-pink-600 dark:text-pink-400 group-hover:text-pink-700 dark:group-hover:text-pink-300";
+                                        borderColor = "hover:border-pink-200 dark:hover:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-950/20";
+                                        break;
+                                    case 'admin':
+                                    case 'write':
+                                        // Orange/Red
+                                        textColor = "text-orange-600 dark:text-orange-400 group-hover:text-orange-700 dark:group-hover:text-orange-300";
+                                        borderColor = "border-orange-200 dark:border-orange-800/50 hover:bg-orange-50 dark:hover:bg-orange-950/20 hover:border-orange-300";
+                                        break;
+                                }
+
+                                return (
+                                    <Badge
+                                        key={cmd.label}
+                                        variant="outline"
+                                        className={cn(
+                                            "cursor-pointer transition-all duration-200 active:scale-95 select-none py-1 group border-dashed",
+                                            borderColor
+                                        )}
+                                        onClick={() => insertAtCursor(cmd.value)}
+                                    >
+                                        <span className={cn("font-mono text-[10px] sm:text-xs font-medium", textColor)}>
+                                            {cmd.label}
+                                        </span>
+                                    </Badge>
+                                );
+                            })}
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -248,8 +343,15 @@ export default function QueryPage() {
                             ref={textareaRef}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="SELECT * FROM tabla WHERE condicion = 'valor'"
-                            className="min-h-[200px] font-mono text-sm border-primary/20 focus:border-primary resize-none bg-muted/30 shadow-inner"
+                            placeholder={isAdvancedMode
+                                ? "DROP VIEW mi_vista; -- Precaución en modo escritura"
+                                : "SELECT * FROM tabla WHERE condicion = 'valor'"}
+                            className={cn(
+                                "min-h-[200px] font-mono text-sm resize-none shadow-inner transition-colors",
+                                isAdvancedMode
+                                    ? "border-orange-200 focus:border-orange-500 bg-orange-50/10"
+                                    : "border-primary/20 focus:border-primary bg-muted/30"
+                            )}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                                     e.preventDefault();
@@ -291,7 +393,12 @@ export default function QueryPage() {
                             <Button
                                 onClick={handleExecute}
                                 disabled={loading || !query.trim()}
-                                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg shadow-blue-500/30 dark:text-white cursor-pointer"
+                                className={cn(
+                                    "shadow-lg dark:text-white cursor-pointer transition-all duration-300",
+                                    isAdvancedMode
+                                        ? "bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-orange-500/30"
+                                        : "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-blue-500/30"
+                                )}
                             >
                                 {loading ? (
                                     <>
@@ -301,7 +408,7 @@ export default function QueryPage() {
                                 ) : (
                                     <>
                                         <Play className="mr-2 h-4 w-4" />
-                                        Ejecutar Consulta
+                                        Ejecutar {isAdvancedMode ? "" : "Consulta"}
                                     </>
                                 )}
                             </Button>
@@ -456,18 +563,36 @@ export default function QueryPage() {
             )
             }
 
-            {/* Empty State */}
             {
                 !loading && !error && results.length === 0 && success && (
-                    <Card className="border-dashed border-2 border-primary/20 animate-in fade-in-50">
-                        <CardContent className="flex flex-col items-center justify-center py-12">
-                            <Database className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                            <p className="text-lg font-medium text-muted-foreground mb-1">
-                                Sin resultados
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                La consulta se ejecutó correctamente pero no devolvió filas.
-                            </p>
+                    <Card className={cn(
+                        "border-dashed border-2 animate-in fade-in-50",
+                        query.trim().toUpperCase().match(/^(CREATE|DROP|INSERT|UPDATE|DELETE|ALTER|GRANT|REVOKE)/)
+                            ? "border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800"
+                            : "border-primary/20"
+                    )}>
+                        <CardContent className="flex flex-col items-center justify-center py-4">
+                            {query.trim().toUpperCase().match(/^(CREATE|DROP|INSERT|UPDATE|DELETE|ALTER|GRANT|REVOKE)/) ? (
+                                <>
+                                    <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
+                                    <p className="text-lg font-medium text-green-700 dark:text-green-400 mb-1">
+                                        Operación Exitosa
+                                    </p>
+                                    <p className="text-sm text-green-600/80 dark:text-green-400/80">
+                                        El comando se ejecutó correctamente.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <Database className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                                    <p className="text-lg font-medium text-muted-foreground mb-1">
+                                        Sin resultados
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        La consulta se ejecutó correctamente pero no devolvió filas.
+                                    </p>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 )

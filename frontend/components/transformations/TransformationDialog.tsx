@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useDashboard } from "@/contexts/DashboardContext";
@@ -22,8 +22,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Sparkles, Copy, Check, Database, Columns, Table2, Code2, Eye, Settings2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Database, Columns, Table2, Code2, Eye, Settings2, ChevronLeft, ChevronRight, Wand2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
     Table,
@@ -35,6 +36,37 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const QUICK_COMMANDS = [
+    // Lectura - Básico
+    { label: "SELECT *", value: "SELECT * ", mode: "read", group: "basic" },
+    { label: "LIMIT", value: "LIMIT 100", mode: "read", group: "basic" },
+    { label: "DISTINCT", value: "DISTINCT ", mode: "read", group: "basic" },
+
+    // Lectura - Filtrado
+    { label: "WHERE", value: "WHERE ", mode: "read", group: "filter" },
+    { label: "ORDER BY", value: "ORDER BY ", mode: "read", group: "filter" },
+    { label: "LIKE", value: "LIKE '%patron%' ", mode: "read", group: "filter" },
+    { label: "BETWEEN", value: "BETWEEN val1 AND val2 ", mode: "read", group: "filter" },
+    { label: "IN", value: "IN (val1, val2) ", mode: "read", group: "filter" },
+
+    // Lectura - Agregación
+    { label: "COUNT", value: "COUNT(*) ", mode: "read", group: "agg" },
+    { label: "SUM", value: "SUM() ", mode: "read", group: "agg" },
+    { label: "AVG", value: "AVG() ", mode: "read", group: "agg" },
+    { label: "MIN", value: "MIN() ", mode: "read", group: "agg" },
+    { label: "MAX", value: "MAX() ", mode: "read", group: "agg" },
+    { label: "GROUP BY", value: "GROUP BY ", mode: "read", group: "agg" },
+    { label: "HAVING", value: "HAVING ", mode: "read", group: "agg" },
+
+    // Lectura - Joins
+    { label: "LEFT JOIN", value: "LEFT JOIN ", mode: "read", group: "join" },
+    { label: "INNER JOIN", value: "INNER JOIN ", mode: "read", group: "join" },
+
+    // Lectura - Funciones Tiempo
+    { label: "DATE_TRUNC", value: "date_trunc('month', fecha) ", mode: "read", group: "func" },
+    { label: "TODAY", value: "today() ", mode: "read", group: "func" },
+];
 
 interface Transformation {
     id: number;
@@ -162,6 +194,29 @@ export default function TransformationDialog({ open, onClose, transformation, in
             return res.data as Dataset[];
         }
     });
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const insertAtCursor = (textToInsert: string) => {
+        if (textareaRef.current) {
+            const textarea = textareaRef.current;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const header = sqlDefinition.substring(0, start);
+            const footer = sqlDefinition.substring(end, sqlDefinition.length);
+            const newQuery = header + textToInsert + footer;
+
+            setSqlDefinition(newQuery);
+
+            setTimeout(() => {
+                textarea.focus();
+                const newCursorPos = start + textToInsert.length;
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+            }, 0);
+        } else {
+            setSqlDefinition(prev => prev + textToInsert);
+        }
+    };
 
     const handlePreview = async (sqlOverride?: string, sourceOverride?: string) => {
         const sql = sqlOverride || sqlDefinition;
@@ -655,78 +710,141 @@ export default function TransformationDialog({ open, onClose, transformation, in
                             {/* Tab 3: SQL Editor */}
                             <TabsContent value="sql" className="mt-0 space-y-4">
                                 {/* Templates */}
-                                <Card className="border-2">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Sparkles className="h-5 w-5 text-primary" />
-                                            Plantillas Rápidas
-                                        </CardTitle>
-                                        <CardDescription>Aplica transformaciones y JOINs comunes con un click</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {/* Transformation Templates */}
-                                        <div className="space-y-2">
-                                            <h4 className="text-sm font-semibold text-muted-foreground">Transformaciones</h4>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                                                {SQL_TEMPLATES.filter(t => t.category === 'transform').map((template) => (
-                                                    <Button
-                                                        key={template.name}
-                                                        type="button"
-                                                        variant="outline"
-                                                        className="h-auto py-3 px-3 flex flex-col items-center gap-2 hover:bg-primary/10 hover:border-primary transition-all cursor-pointer"
-                                                        onClick={() => applyTemplate(template)}
-                                                    >
-                                                        <span className="text-2xl">{template.icon}</span>
-                                                        <span className="text-xs font-medium text-center leading-tight">{template.name}</span>
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </div>
+                                {/* Compact Quick Templates */}
+                                <div className="space-y-3 p-3 bg-muted/20 rounded-lg border border-border/50">
+                                    <h4 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
+                                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                        Plantillas Rápidas
+                                    </h4>
 
-                                        {/* JOIN Templates */}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-semibold text-muted-foreground">JOINs (Tablas Relacionadas)</h4>
-                                                {!secondaryTable && (
-                                                    <Badge variant="outline" className="text-xs">
-                                                        💡 Selecciona tabla secundaria arriba
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                                                {SQL_TEMPLATES.filter(t => t.category === 'join').map((template) => (
-                                                    <Button
-                                                        key={template.name}
-                                                        type="button"
-                                                        variant="outline"
-                                                        className="h-auto py-3 px-3 flex flex-col items-center gap-2 hover:bg-blue-50 hover:border-blue-500 dark:hover:bg-blue-950/20 transition-all cursor-pointer"
-                                                        onClick={() => applyTemplate(template)}
-                                                    >
-                                                        <span className="text-2xl">{template.icon}</span>
-                                                        <span className="text-xs font-medium text-center leading-tight">{template.name}</span>
-                                                    </Button>
-                                                ))}
-                                            </div>
+                                    {/* Transformations Row */}
+                                    <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground w-20 pt-1.5">Transformaciones</span>
+                                        <div className="flex flex-wrap gap-1.5 flex-1 sm:ml-10">
+                                            {SQL_TEMPLATES.filter(t => t.category === 'transform').map((template) => (
+                                                <Button
+                                                    key={template.name}
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs px-2 gap-1.5 border-dashed hover:border-solid hover:bg-primary/5 hover:text-primary transition-all cursor-pointer"
+                                                    onClick={() => applyTemplate(template)}
+                                                    title={template.name}
+                                                >
+                                                    <span>{template.icon}</span>
+                                                    <span className="font-medium text-[10px] sm:text-xs">{template.name}</span>
+                                                </Button>
+                                            ))}
                                         </div>
-                                    </CardContent>
-                                </Card>
+                                    </div>
+
+                                    <div className="h-px bg-border/50" />
+
+                                    {/* JOINs Row */}
+                                    <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                                        <div className="flex items-center gap-2 w-20 pt-1.5">
+                                            <span className="text-[10px] uppercase font-bold text-muted-foreground">JOINs</span>
+                                            {!secondaryTable && (
+                                                <Badge variant="outline" className="h-4 px-1 text-[9px] border-amber-200 bg-amber-50 text-amber-600" title="Selecciona tabla secundaria arriba">
+                                                    Relacionar Tabla
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 flex-1 sm:ml-10">
+                                            {SQL_TEMPLATES.filter(t => t.category === 'join').map((template) => (
+                                                <Button
+                                                    key={template.name}
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs px-2 gap-1.5 border-dashed hover:border-solid hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/20 transition-all cursor-pointer"
+                                                    onClick={() => applyTemplate(template)}
+                                                    title={template.name}
+                                                >
+                                                    <span>{template.icon}</span>
+                                                    <span className="font-medium text-[10px] sm:text-xs">{template.name}</span>
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Quick Commands Toolbar */}
+                                <div className="space-y-2 pt-2 bg-muted/20 p-3 rounded-lg border border-border/50 my-2">
+                                    <div className="flex items-center text-xs font-medium text-muted-foreground mb-2">
+                                        <Wand2 className="h-3.5 w-3.5 mr-1.5 text-purple-500" />
+                                        Comandos Rápidos (DuckDB):
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {QUICK_COMMANDS.map((cmd) => {
+                                            // Define styles based on group
+                                            let textColor = "text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100";
+                                            let borderColor = "hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/20";
+
+                                            switch (cmd.group) {
+                                                case 'basic':
+                                                    // Cyan / Neutral
+                                                    textColor = "text-cyan-600 dark:text-cyan-400 group-hover:text-cyan-700 dark:group-hover:text-cyan-300";
+                                                    borderColor = "hover:border-cyan-200 dark:hover:border-cyan-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/20";
+                                                    break;
+                                                case 'filter':
+                                                    // Green / Teal
+                                                    textColor = "text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300";
+                                                    borderColor = "hover:border-emerald-200 dark:hover:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/20";
+                                                    break;
+                                                case 'agg':
+                                                    // Blue
+                                                    textColor = "text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300";
+                                                    borderColor = "hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/20";
+                                                    break;
+                                                case 'join':
+                                                    // Purple
+                                                    textColor = "text-violet-600 dark:text-violet-400 group-hover:text-violet-700 dark:group-hover:text-violet-300";
+                                                    borderColor = "hover:border-violet-200 dark:hover:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950/20";
+                                                    break;
+                                                case 'func':
+                                                    // Pink/Rose
+                                                    textColor = "text-pink-600 dark:text-pink-400 group-hover:text-pink-700 dark:group-hover:text-pink-300";
+                                                    borderColor = "hover:border-pink-200 dark:hover:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-950/20";
+                                                    break;
+                                            }
+
+                                            return (
+                                                <Badge
+                                                    key={cmd.label}
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "cursor-pointer transition-all duration-200 active:scale-95 select-none py-1 group border-dashed",
+                                                        borderColor
+                                                    )}
+                                                    onClick={() => insertAtCursor(cmd.value)}
+                                                >
+                                                    <span className={cn("font-mono text-[10px] sm:text-xs font-medium", textColor)}>
+                                                        {cmd.label}
+                                                    </span>
+                                                </Badge>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
 
                                 {/* SQL Editor */}
                                 <Card className="border-2">
-                                    <CardHeader className="pb-3">
+                                    <CardHeader className="pb-0">
                                         <CardTitle className="text-lg flex items-center gap-2">
                                             <Code2 className="h-5 w-5 text-primary" />
                                             Definición SQL <span className="text-destructive text-base ml-1">*</span>
                                         </CardTitle>
                                         <CardDescription>Escribe tu consulta SQL de transformación</CardDescription>
                                     </CardHeader>
-                                    <CardContent className="space-y-3">
+                                    <CardContent className="space-y-2">
                                         <Textarea
                                             id="sql"
+                                            ref={textareaRef}
                                             value={sqlDefinition}
                                             onChange={(e) => setSqlDefinition(e.target.value)}
                                             placeholder={`SELECT * FROM ${sourceTable || 'tabla'} WHERE condicion...`}
-                                            className="font-mono text-sm min-h-[300px] resize-none"
+                                            className="font-mono text-sm min-h-[250px] resize-none"
                                             required
                                         />
                                         <div className="flex items-center justify-between">
@@ -757,7 +875,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
 
                                 {previewData.length > 0 && (
                                     <Card className="border-primary/30 bg-primary/5">
-                                        <CardContent className="py-6">
+                                        <CardContent className="py-0">
                                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className="rounded-full bg-primary/10 p-2">

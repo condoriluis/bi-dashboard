@@ -34,22 +34,38 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
         setMounted(true);
     }, []);
 
-    const points = useMemo(() => {
-        return data.map(row => [row.lat, row.lon] as [number, number]);
+    const validData = useMemo(() => {
+        return data
+            .map(row => ({
+                ...row,
+                lat: Number(row.lat),
+                lon: Number(row.lon),
+                size: (row.size !== undefined && row.size !== null && row.size !== '') ? Number(row.size) : undefined
+            }))
+            .filter(row => !isNaN(row.lat) && !isNaN(row.lon) && row.lat !== 0 && row.lon !== 0);
     }, [data]);
 
-    // Calculate dynamic size scale
+    const points = useMemo(() => {
+        return validData.map(row => [row.lat, row.lon] as [number, number]);
+    }, [validData]);
+
     const { minSize, maxSize } = useMemo(() => {
-        if (!config.sizeAxis || data.length === 0) return { minSize: 10, maxSize: 10 };
-        const values = data.map(d => Number(d.size));
+        if (!config.sizeAxis || validData.length === 0) return { minSize: 10, maxSize: 10 };
+        const values = validData
+            .map(d => Number(d.size))
+            .filter(v => !isNaN(v));
+
+        if (values.length === 0) return { minSize: 10, maxSize: 10 };
+
         return {
             minSize: Math.min(...values),
             maxSize: Math.max(...values)
         };
-    }, [data, config.sizeAxis]);
+    }, [validData, config.sizeAxis]);
 
     const getRadius = (value: number) => {
         if (!config.sizeAxis) return 10;
+        if (value === undefined || value === null || isNaN(value)) return 10;
         if (minSize === maxSize) return 15;
         const minR = 6;
         const maxR = 30;
@@ -57,8 +73,8 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
     };
 
     const heatPoints = useMemo(() => {
-        return data.map(d => [d.lat, d.lon, d.size ? Number(d.size) : 1]);
-    }, [data]);
+        return validData.map(d => [d.lat, d.lon, d.size ? Number(d.size) : 1]);
+    }, [validData]);
 
     const handleResetView = () => {
         if (mapInstance && points.length > 0) {
@@ -92,7 +108,7 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
 
                 <MapBounds points={points} />
 
-                {viewMode === 'points' && data.map((row, i) => {
+                {viewMode === 'points' && validData.map((row, i) => {
                     let fillColor = config.color && config.color !== 'default' ? config.color : "#3b82f6";
                     if (row.color) {
                         const colors = ['#0ea5e9', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'];

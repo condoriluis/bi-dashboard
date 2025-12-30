@@ -167,6 +167,22 @@ class DataLoader:
         finally:
             conn.close()
 
+    def register_dataset_from_sql(self, sql_query: str, table_name: str, dashboard_id: str = None):
+        """Register a dataset created from a SQL query"""
+        conn = db.get_connection()
+        try:
+            
+            full_query = f"CREATE OR REPLACE TABLE {table_name} AS {sql_query}"
+            conn.execute(full_query)
+            
+            # Metadata
+            conn.execute("""
+                INSERT OR REPLACE INTO dataset_metadata (table_name, original_filename, file_extension, upload_date, dashboard_id)
+                VALUES (?, ?, ?, ?, ?)
+            """, (table_name, "Generated from SQL", ".sql", datetime.now(), dashboard_id))
+        finally:
+            conn.close()
+
     def list_server_files(self) -> List[str]:
         """List files in the uploads directory recursively"""
         files = []

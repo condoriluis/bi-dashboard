@@ -204,8 +204,12 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
     // --- Metric View ---
     if (config.type === 'metric') {
         const value = result && result.length > 0 ? Object.values(result[0])[0] as number : 0;
+
+        const shouldUseCurrency = (config.yAxis || '').toLowerCase().match(/price|cost|revenue|sales|budget|fee|tax|bill|amount|monto|precio|costo|venta/);
+        const formatFn = shouldUseCurrency ? formatCurrency : formatNumber;
+
         const formattedValue = typeof value === 'number' ?
-            (config.aggregation === 'SUM' || config.aggregation === 'AVG' ? formatCurrency(value) : formatNumber(value))
+            formatFn(value)
             : value;
 
         const aggMap: Record<string, string> = {
@@ -332,6 +336,9 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
         const isMonochrome = (config.color && config.color !== 'default') && (isCircular || !!config.breakdown);
 
+        const shouldUseCurrency = (config.yAxis || '').toLowerCase().match(/price|cost|revenue|sales|budget|fee|tax|bill|amount|monto|precio|costo|venta/);
+        const formatFn = shouldUseCurrency ? formatCurrency : formatNumber;
+
         const chartOptions: any = {
             chart: {
                 stacked: !!config.breakdown && (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'area'),
@@ -401,7 +408,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                     style: { colors: '#94a3b8', fontSize: '12px' },
                     formatter: config.chartType === 'bar-horizontal'
                         ? (val: any) => val
-                        : (val: number) => formatNumber(val)
+                        : (val: number) => formatFn(val)
                 }
             },
             grid: {
@@ -425,7 +432,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                     fontFamily: 'inherit',
                 },
                 y: {
-                    formatter: (val: number) => config.yAxis ? formatCurrency(val) : val
+                    formatter: (val: number) => config.yAxis ? formatFn(val) : val
                 },
                 fixed: {
                     enabled: false,

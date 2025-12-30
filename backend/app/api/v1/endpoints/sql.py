@@ -9,6 +9,7 @@ router = APIRouter()
 
 class QueryRequest(BaseModel):
     query: str
+    allow_unsafe: bool = False
 
 @router.post("/execute", response_model=List[Dict[str, Any]])
 def execute_sql(
@@ -17,31 +18,36 @@ def execute_sql(
     db_conn = Depends(get_db)
 ) -> Any:
     """
-    Execute a SELECT query against the data warehouse.
-    Sandbox restricted to SELECT only.
+    Execute a query against the data warehouse.
+    By default in Sandbox, restricted to SELECT only.
+    If allow_unsafe is True, allows write operations.
     """
     sql = query_req.query.strip()
     
-    allowed_prefixes = ("select", "describe", "show", "explain")
-    if not sql.lower().startswith(allowed_prefixes):
-        raise HTTPException(status_code=400, detail="Only SELECT, SHOW, DESCRIBE and EXPLAIN queries are allowed.")
-    
-    forbidden_keywords = ["drop", "delete", "insert", "update", "alter", "create", "truncate", "grant", "revoke"]
-    for word in forbidden_keywords:
-        if f" {word} " in f" {sql.lower()} ":
-            raise HTTPException(status_code=400, detail=f"Forbidden keyword '{word}' detected. Sandbox allows read-only operations.")
-    
-    if ";" in sql.replace(";", ""):
-        raise HTTPException(status_code=400, detail="Multiple statements (semicolons) are not allowed in Sandbox.")
+    if not query_req.allow_unsafe:
+        allowed_prefixes = ("select", "describe", "show", "explain")
+        if not sql.lower().startswith(allowed_prefixes):
+            raise HTTPException(status_code=400, detail="Only SELECT, SHOW, DESCRIBE and EXPLAIN queries are allowed.")
+        
+        forbidden_keywords = ["drop", "delete", "insert", "update", "alter", "create", "truncate", "grant", "revoke"]
+        for word in forbidden_keywords:
+            if f" {word} " in f" {sql.lower()} ":
+                raise HTTPException(status_code=400, detail=f"Forbidden keyword '{word}' detected. Sandbox allows read-only operations.")
+        
+        if ";" in sql.replace(";", ""):
+            raise HTTPException(status_code=400, detail="Multiple statements (semicolons) are not allowed in Sandbox.")
 
     try:
 
         cursor = db_conn.execute(sql)
-        columns = [desc[0] for desc in cursor.description]
-        rows = cursor.fetchall()
         
-        result = [dict(zip(columns, row)) for row in rows]
-        return result
+        if cursor.description:
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            result = [dict(zip(columns, row)) for row in rows]
+            return result
+        else:
+            return [{"message": "Query executed successfully", "status": "ok"}]
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Query execution failed: {str(e)}")

@@ -248,9 +248,9 @@ export default function DatasetsPage() {
                 <DashboardBadge />
             </div>
 
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
                 {/* Import Card */}
-                <Card className="border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom duration-500">
+                <Card className="border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom duration-500 col-span-1">
                     <CardHeader>
                         <div className="flex items-center space-x-3">
                             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -454,7 +454,7 @@ export default function DatasetsPage() {
                 </Card>
 
                 {/* Available Datasets Table */}
-                <Card className="border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom duration-500 delay-100">
+                <Card className="border-primary/20 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom duration-500 delay-100 col-span-2">
                     <CardHeader>
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center space-x-3">
@@ -624,9 +624,14 @@ export default function DatasetsPage() {
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground text-xs">
                                                             {dataset.extension?.toLowerCase() === 'view' ? (
-                                                                <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-0.5 rounded-full">Vista</span>
+                                                                <span className="rounded-full inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                                                    Vista
+                                                                </span>
                                                             ) : (
-                                                                <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded-full">Tabla</span>
+                                                                <span className="rounded-full inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                                                    Tabla
+                                                                </span>
+
                                                             )}
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground">{dataset.table_name}</TableCell>

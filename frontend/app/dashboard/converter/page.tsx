@@ -33,6 +33,7 @@ export default function ConverterPage() {
 
     const supportedFormats = [
         { ext: "csv", label: "CSV", icon: FileSpreadsheet, color: "text-green-500 bg-green-500/10 border-green-200 dark:border-green-800" },
+        { ext: "txt", label: "TXT", icon: FileType, color: "text-cyan-500 bg-cyan-500/10 border-cyan-200 dark:border-cyan-800" },
         { ext: "json", label: "JSON", icon: FileJson, color: "text-yellow-500 bg-yellow-500/10 border-yellow-200 dark:border-yellow-800" },
         { ext: "xlsx", label: "Excel", icon: FileCode, color: "text-blue-500 bg-blue-500/10 border-blue-200 dark:border-blue-800" },
         { ext: "avro", label: "Avro", icon: Database, color: "text-purple-500 bg-purple-500/10 border-purple-200 dark:border-purple-800" },
@@ -120,7 +121,7 @@ export default function ConverterPage() {
                         Convertidor de Datos
                     </h1>
                     <p className="text-muted-foreground">
-                        Transforma tus archivos CSV, Excel y JSON a formato Parquet de alto rendimiento para análisis Big Data.
+                        Transforma tus archivos CSV, TXT delimitados, Excel y JSON a formato Parquet de alto rendimiento para análisis Big Data.
                     </p>
                 </div>
                 <div className="flex -space-x-2">
@@ -134,7 +135,7 @@ export default function ConverterPage() {
                         </div>
                     ))}
                     <div className="w-8 h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground z-10 pl-1">
-                        +2
+                        +1
                     </div>
                 </div>
             </div>
@@ -175,7 +176,7 @@ export default function ConverterPage() {
                                             ref={inputRef}
                                             type="file"
                                             className="hidden"
-                                            accept=".csv,.json,.xlsx,.xls,.avro,.orc"
+                                            accept=".csv,.txt,.json,.xlsx,.xls,.avro,.orc"
                                             onChange={handleChange}
                                         />
 
@@ -196,6 +197,7 @@ export default function ConverterPage() {
                                             </div>
                                             <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
                                                 <Badge variant="outline" className="text-xs bg-background/50">CSV</Badge>
+                                                <Badge variant="outline" className="text-xs bg-background/50">TXT</Badge>
                                                 <Badge variant="outline" className="text-xs bg-background/50">Excel</Badge>
                                                 <Badge variant="outline" className="text-xs bg-background/50">JSON</Badge>
                                             </div>

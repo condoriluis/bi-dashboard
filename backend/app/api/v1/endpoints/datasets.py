@@ -47,11 +47,11 @@ def convert_dataset(
 ) -> Any:
     """
     Convert various file formats to Parquet.
-    Supported formats: CSV, JSON, Excel (.xlsx, .xls), Avro, ORC
+    Supported formats: CSV, TXT, JSON, Excel (.xlsx, .xls), Avro, ORC
     """
     # Detect file type from extension
     file_ext = file.filename.rsplit('.', 1)[-1].lower()
-    supported_formats = ['csv', 'json', 'xlsx', 'xls', 'avro', 'orc']
+    supported_formats = ['csv', 'txt', 'json', 'xlsx', 'xls', 'avro', 'orc']
     
     if file_ext not in supported_formats:
         raise HTTPException(
@@ -176,6 +176,25 @@ def import_dataset_from_local(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to import from local file: {str(e)}")
+
+class SqlImportRequest(BaseModel):
+    sql_query: str
+    table_name: str
+    dashboard_id: Optional[str] = None
+
+@router.post("/create-from-sql", status_code=201)
+def create_dataset_from_sql(
+    request: SqlImportRequest,
+    current_user: User = Depends(deps.get_current_active_superuser)
+) -> Any:
+    """
+    Create a new dataset table from a SQL query.
+    """
+    try:
+        data_loader.register_dataset_from_sql(request.sql_query, request.table_name, request.dashboard_id)
+        return {"message": "Dataset created successfully from SQL", "table": request.table_name}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create dataset from SQL: {str(e)}")
 
 @router.get("/server-files")
 def list_server_files(
