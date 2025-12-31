@@ -16,6 +16,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from 'sonner';
 import PredictionDialog from './PredictionDialog';
 
@@ -27,6 +33,7 @@ export interface Model {
     feature_columns: string[];
     model_type?: 'random_forest' | 'xgboost' | 'tensorflow';
     status: 'training' | 'completed' | 'failed';
+    progress?: number;
     created_at: string;
     metrics?: Record<string, number>;
     error?: string;
@@ -134,16 +141,19 @@ export default function ModelList() {
     useEffect(() => {
         fetchModels();
 
+        const isAnyTraining = models.some(m => m.status === 'training');
+        const intervalTime = (isAnyTraining || retrainingId) ? 2000 : 10000;
+
         pollingIntervalRef.current = setInterval(() => {
             fetchModels();
-        }, 5000);
+        }, intervalTime);
 
         return () => {
             if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
             }
         };
-    }, [retrainingId]);
+    }, [retrainingId, models.map(m => m.status).join(',')]);
 
     const getModelIcon = (type?: string) => {
         switch (type) {
@@ -230,23 +240,77 @@ export default function ModelList() {
                                         <Award className="h-3 w-3" />
                                         Métricas
                                     </p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {Object.entries(model.metrics).map(([key, val]) => {
-                                            const friendlyName = {
-                                                'loss': 'Error',
-                                                'mae': 'MAE',
-                                                'accuracy': 'Precisión',
-                                                'mse': 'MSE',
-                                            }[key] || key;
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <TooltipProvider>
+                                            {Object.entries(model.metrics).map(([key, val]) => {
+                                                const friendlyName = {
+                                                    'loss': 'Error',
+                                                    'mae': 'MAE',
+                                                    'accuracy': 'Precisión',
+                                                    'mse': 'MSE',
+                                                    'r2': 'R² Score',
+                                                    'rmse': 'RMSE'
+                                                }[key] || key;
 
-                                            return (
-                                                <div key={key} className="bg-background/50 p-2 rounded border border-border/50 flex flex-col justify-between hover:bg-background/80 transition-colors">
-                                                    <p className="text-[10px] text-muted-foreground uppercase truncate" title={key}>{friendlyName}</p>
-                                                    <p className="text-sm font-bold truncate">{typeof val === 'number' ? val.toFixed(2) : val}</p>
-                                                </div>
-                                            );
-                                        })}
+                                                const descriptions: Record<string, string> = {
+                                                    'mae': 'Error Absoluto Medio: Promedio de error en las mismas unidades (ej: kW). ¡Menos es mejor!',
+                                                    'r2': 'R² (R-Cuadrado): Calidad del modelo de 0 a 1. 0.88 es excelente y 1.0 suele ser sospechoso.',
+                                                    'rmse': 'RMSE: Penaliza errores grandes más que el MAE. Si es bajo, el modelo es muy estable.',
+                                                    'accuracy': 'Porcentaje de veces que el modelo acertó la categoría exacta.',
+                                                    'loss': 'Valor de la función de pérdida durante el entrenamiento (interno).'
+                                                };
+
+                                                return (
+                                                    <Tooltip key={key}>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="bg-background/50 p-2 rounded border border-border/50 flex flex-col justify-between hover:bg-background/80 transition-colors cursor-help">
+                                                                <p className="text-[10px] text-muted-foreground uppercase truncate flex items-center gap-1">
+                                                                    {friendlyName}
+                                                                </p>
+                                                                <p className="text-sm font-bold truncate">{typeof val === 'number' ? val.toFixed(2) : val}</p>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" className="max-w-[200px] text-xs">
+                                                            <p>{descriptions[key] || "Métrica de evaluación del modelo"}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                );
+                                            })}
+                                        </TooltipProvider>
                                     </div>
+                                </div>
+                            )}
+
+                            {model.status === 'training' && (
+                                <div className="pt-3 border-t border-border/50 space-y-2 animate-in fade-in slide-in-from-top-2">
+                                    {model.progress !== undefined ? (
+                                        <>
+                                            <div className="flex justify-between text-[10px] font-bold uppercase text-blue-500">
+                                                <span>Progreso del Entrenamiento</span>
+                                                <span>{Math.round(model.progress)}%</span>
+                                            </div>
+                                            <div className="w-full bg-blue-500/10 rounded-full h-1.5 overflow-hidden border border-blue-500/20">
+                                                <div
+                                                    className="bg-blue-500 h-full transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                                    style={{ width: `${model.progress}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground animate-pulse text-center italic">
+                                                {model.progress < 15 ? 'Cargando datos...' :
+                                                    model.progress < 35 ? 'Preprocesando...' :
+                                                        model.progress < 90 ? 'Entrenando modelo...' : 'Finalizando...'}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-1 py-1">
+                                            <p className="text-[10px] text-muted-foreground animate-pulse italic">
+                                                Entrenamiento iniciado antes de la actualización
+                                            </p>
+                                            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
+                                                <div className="bg-muted-foreground/30 h-full w-full animate-progress-indeterminate" />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

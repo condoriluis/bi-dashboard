@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 const MapWidget = dynamic(() => import('./MapWidget'), { ssr: false });
+import { ForecastingControls } from "./ForecastingControls";
 
 interface DashboardWidgetProps {
     config: WidgetConfig;
@@ -55,6 +56,10 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
     const [page, setPage] = useState(1);
     const pageSize = 10;
     const [isDarkMode, setIsDarkMode] = useState(false);
+
+    // --- Forecast State ---
+    const [forecastData, setForecastData] = useState<any[]>([]);
+    const [forecastModelName, setForecastModelName] = useState("");
 
     useEffect(() => {
         const checkTheme = () => {
@@ -284,29 +289,22 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
         let categories: any[] = [];
         const isCircular = config.chartType === 'pie' || config.chartType === 'donut' || config.chartType === 'polarArea';
 
+        // ... [Existing Breakdown Logic] ...
         if (config.breakdown && !isCircular) {
             const breakdownField = config.breakdown;
             const xAxisField = config.xAxis || 'x';
-
-            // 1. Get unique categories (X Axis)
             categories = Array.from(new Set(result?.map((r: any) => r[xAxisField]))).filter(Boolean);
-
-            // 2. Get unique series names (Breakdown)
             const seriesNames = Array.from(new Set(result?.map((r: any) => r[breakdownField]))).filter(Boolean);
-
-            // 3. Construct Series Data
             series = seriesNames.map((seriesName: any) => {
                 const data = categories.map((cat: any) => {
                     const row = result?.find((r: any) => r[xAxisField] === cat && r[breakdownField] === seriesName);
                     return row ? (row.value || row[config.yAxis!] || 0) : 0;
                 });
-                return {
-                    name: String(seriesName),
-                    data: data
-                };
+                return { name: String(seriesName), data: data };
             });
 
         } else {
+            // Standard Chart Logic
             const seriesData = result?.map((row: any) => {
                 if (row.value !== undefined) return row.value;
                 if (row.y_val !== undefined) return row.y_val;
@@ -316,7 +314,6 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             }) || [];
 
             categories = result?.map((row: any) => {
-
                 if (config.xAxis && row[config.xAxis] !== undefined) return row[config.xAxis];
                 if (row.x_val !== undefined) return row.x_val;
                 const labelKey = Object.keys(row).find(k => k !== 'value' && k !== 'y_val' && k !== config.yAxis);
@@ -326,7 +323,37 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             series = isCircular ? seriesData : [{ name: config.yAxis || 'Valor', data: seriesData }];
         }
 
-        if (config.chartType === 'mixed') {
+        // --- MERGE FORECAST DATA ---
+        if (forecastData.length > 0 && !isCircular) {
+            const lastCategory = categories[categories.length - 1];
+
+            const forecastDates = forecastData.map(f => {
+                return f.date.split('T')[0];
+            });
+            categories = [...categories, ...forecastDates];
+
+            series = series.map(s => ({
+                ...s,
+                data: [...s.data, ...Array(forecastData.length).fill(null)]
+            }));
+
+            const nullsForHistory = Array(series[0].data.length - forecastData.length).fill(null);
+
+            const predictionValues = forecastData.map(f => f.prediction);
+
+            series.push({
+                name: `Proyección (${forecastModelName})`,
+                data: [...nullsForHistory, ...predictionValues],
+                type: 'line',
+                dashArray: 5,
+                color: '#9333ea'
+            });
+
+        }
+
+        // [Existing Mixed Logic]
+        if (config.chartType === 'mixed' && !forecastData.length) {
+
             if (config.breakdown) {
                 series = series.map((s: any, idx: number) => ({
                     ...s,
@@ -349,16 +376,21 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             }
         }
 
-        const isMonochrome = (config.color && config.color !== 'default') && (isCircular || !!config.breakdown);
+        if (forecastData.length > 0) {
+            colors.push('#9333ea');
+        }
+
+        const isMonochrome = (config.color && config.color !== 'default') && (isCircular || !!config.breakdown) && !forecastData.length;
 
         const shouldUseCurrency = (config.yAxis || '').toLowerCase().match(/price|cost|revenue|sales|budget|fee|tax|bill|amount|monto|precio|costo|venta/);
         const formatFn = shouldUseCurrency ? formatCurrency : formatNumber;
 
         const chartOptions: any = {
             chart: {
-                stacked: !!config.breakdown && (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'area'),
+                stacked: !!config.breakdown && (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'area') && !forecastData.length,
                 toolbar: {
                     show: true,
+                    // ... existing toolbar tools ...
                     tools: {
                         download: true,
                         selection: true,
@@ -368,27 +400,18 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                         pan: true,
                         reset: true
                     },
-                    export: {
-                        csv: {
-                            filename: config.title || 'chart_data',
-                        },
-                        png: {
-                            filename: config.title || 'chart_image',
-                        },
-                        svg: {
-                            filename: config.title || 'chart_vector',
-                        }
-                    }
                 },
                 background: 'transparent',
-                animations: {
-                    enabled: true,
-                    easing: 'easeinout',
-                    speed: 800
-                },
+                animations: { enabled: true, easing: 'easeinout', speed: 800 },
                 fontFamily: 'inherit',
             },
             colors: colors,
+            stroke: {
+                curve: 'smooth',
+                width: forecastData.length ? 2 : ((config.chartType === 'polarArea') ? 1 : ((isCircular || config.chartType === 'scatter' || config.chartType === 'heatmap') ? 0 : (config.chartType === 'area' ? 3 : 2))),
+                dashArray: forecastData.length ? series.map(s => s.dashArray || 0) : 0
+            },
+            // ... theme ...
             theme: {
                 mode: isDarkMode ? 'dark' : 'light',
                 monochrome: isMonochrome ? {
@@ -396,23 +419,15 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                     color: config.color,
                     shadeTo: isDarkMode ? 'dark' : 'light',
                     shadeIntensity: 0.65
-                } : {
-                    enabled: false
-                }
+                } : { enabled: false }
             },
             labels: isCircular ? categories : [],
             xaxis: {
                 categories: isCircular ? [] : categories,
                 labels: {
-                    style: {
-                        colors: '#94a3b8',
-                        fontSize: '12px'
-                    },
-                    formatter: (config.chartType === 'bar-horizontal' || config.chartType === 'funnel')
-                        ? (val: string) => formatNumber(Number(val))
-                        : undefined,
-                    rotate: -45,
-                    trim: true
+                    style: { colors: '#94a3b8', fontSize: '12px' },
+                    rotate: -45, trim: true,
+                    formatter: (config.chartType === 'bar-horizontal' || config.chartType === 'funnel') ? (val: string) => formatNumber(Number(val)) : undefined,
                 },
                 axisBorder: { show: false },
                 axisTicks: { show: false }
@@ -433,48 +448,29 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                 xaxis: { lines: { show: (config.chartType === 'bar-horizontal' || config.chartType === 'funnel') } },
                 yaxis: { lines: { show: (config.chartType !== 'bar-horizontal' && config.chartType !== 'funnel') } }
             },
+            // ... dataLabels ...
             dataLabels: {
-                enabled: isCircular || config.chartType === 'funnel' || ((config.chartType === 'bar' || config.chartType === 'column') && !config.breakdown),
-                style: {
-                    colors: ['#fff']
-                },
+                enabled: isCircular || config.chartType === 'funnel' || ((config.chartType === 'bar' || config.chartType === 'column') && !config.breakdown && !forecastData.length),
+                style: { colors: ['#fff'] },
                 dropShadow: { enabled: true },
-                background: {
-                    enabled: false
-                }
+                background: { enabled: false }
             },
             tooltip: {
                 theme: 'dark',
-                style: {
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                },
-                y: {
-                    formatter: (val: number) => config.yAxis ? formatFn(val) : val
-                },
-                fixed: {
-                    enabled: false,
-                    position: 'topRight',
-                    offsetX: 0,
-                    offsetY: 0,
-                },
-                marker: {
-                    show: true,
-                }
+                // ...
+                style: { fontSize: '12px', fontFamily: 'inherit' },
+                y: { formatter: (val: number) => config.yAxis ? formatFn(val) : val },
+                fixed: { enabled: false, position: 'topRight', offsetX: 0, offsetY: 0 },
+                marker: { show: true }
             },
             markers: {
-                size: (config.chartType === 'scatter' || config.chartType === 'mixed') ? 4 : 0,
-                hover: { size: (config.chartType === 'scatter' || config.chartType === 'mixed') ? 6 : undefined }
-            },
-            stroke: {
-                curve: 'smooth',
-                width: (config.chartType === 'polarArea') ? 1 : ((isCircular || config.chartType === 'scatter' || config.chartType === 'heatmap') ? 0 : (config.chartType === 'area' ? 3 : 2)),
-                colors: (config.chartType === 'polarArea') ? ['#fff'] : undefined
+                size: (config.chartType === 'scatter' || config.chartType === 'mixed' || forecastData.length) ? 4 : 0,
+                hover: { size: 6 }
             },
             fill: {
-                type: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed') ? 'solid' : 'gradient',
-                opacity: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed') ? 1 : 0.85,
-                gradient: (config.chartType === 'area') ? {
+                type: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed' || forecastData.length) ? 'solid' : 'gradient',
+                opacity: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed' || forecastData.length) ? 1 : 0.85,
+                gradient: (config.chartType === 'area' && !forecastData.length) ? {
                     shadeIntensity: 1,
                     opacityFrom: 0.7,
                     opacityTo: 0.2,
@@ -485,55 +481,25 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                 bar: {
                     borderRadius: 4,
                     columnWidth: config.chartType === 'funnel' ? '80%' : '60%',
-                    distributed: (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'mixed') && (!config.color || config.color === 'default') && !config.breakdown,
+                    distributed: (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'mixed') && (!config.color || config.color === 'default') && !config.breakdown && !forecastData.length,
                     horizontal: config.chartType === 'bar-horizontal' || config.chartType === 'funnel',
                     isFunnel: config.chartType === 'funnel',
-                    isDumbbell: false,
-                    isRangeBar: false,
                 },
-                pie: {
-                    donut: {
-                        labels: {
-                            show: true,
-                            total: {
-                                show: true,
-                                label: 'Total',
-                                color: '#94a3b8',
-                                formatter: (w: any) => {
-                                    return w.globals.seriesTotals.reduce((a: any, b: any) => a + b, 0).toLocaleString();
-                                }
-                            }
-                        }
-                    }
-                },
-                polarArea: {
-                    rings: {
-                        strokeWidth: 1,
-                        strokeColor: 'rgba(226, 232, 240, 0.1)',
-                    },
-                    spokes: {
-                        strokeWidth: 1,
-                        connectorColor: 'rgba(226, 232, 240, 0.1)',
-                    }
-                },
-                heatmap: {
-                    radius: 2,
-                    enableShades: true,
-                    shadeIntensity: 0.5,
-                }
+                pie: { donut: { labels: { show: true, total: { show: true, label: 'Total', color: '#94a3b8', formatter: (w: any) => w.globals.seriesTotals.reduce((a: any, b: any) => a + b, 0).toLocaleString() } } } },
+                polarArea: { rings: { strokeWidth: 1, strokeColor: 'rgba(226, 232, 240, 0.1)' }, spokes: { strokeWidth: 1, connectorColor: 'rgba(226, 232, 240, 0.1)' } },
+                heatmap: { radius: 2, enableShades: true, shadeIntensity: 0.5 }
             },
             legend: {
-                show: isCircular || !!config.breakdown || (config.chartType === 'bar' && !config.color),
+                show: isCircular || !!config.breakdown || (config.chartType === 'bar' && !config.color) || forecastData.length > 0,
                 position: 'bottom',
-                itemMargin: {
-                    horizontal: 10,
-                    vertical: 5
-                },
-                labels: {
-                    colors: '#94a3b8',
-                }
+                itemMargin: { horizontal: 10, vertical: 5 },
+                labels: { colors: '#94a3b8' }
             }
         };
+
+        if (forecastData.length > 0) {
+            // We can use annotations to shade the area? No, simpler to just rely on the dashed line for v1 as planned explicitly in code replacing area.
+        }
 
         return (
             <Card className="flex flex-col h-full border-primary/20 hover:shadow-lg transition-all duration-300 col-span-2 group overflow-visible">
@@ -544,12 +510,22 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                             {config.dataset}
                         </CardDescription>
                     </div>
-                    <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} />
+                    <div className="flex items-center gap-1">
+                        <ForecastingControls
+                            datasetName={config.dataset || ""}
+                            currentChartType={config.chartType || "bar"}
+                            onForecast={(data, modelName, horizon) => {
+                                setForecastData(data);
+                                setForecastModelName(modelName);
+                            }}
+                        />
+                        <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} />
+                    </div>
                 </CardHeader>
                 <CardContent className="h-full flex-1 min-h-0 pb-4 overflow-visible relative z-10 px-4">
                     <div className="h-full w-full min-h-[300px]">
                         <Chart
-                            key={`${config.id}-${config.color}-${config.chartType}`}
+                            key={`${config.id}-${config.color}-${config.chartType}-${forecastData.length}`}
                             options={chartOptions}
                             series={series}
                             type={((config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel') ? 'bar' : (config.chartType === 'mixed' ? 'line' : config.chartType)) as any || "bar"}

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from typing import List, Dict
-from app.schemas.ai import TrainRequest, PredictionRequest, ModelMetadata
+from app.schemas.ai import TrainRequest, PredictionRequest, ModelMetadata, PredictRangeRequest
 from app.services.ai_service import ai_service
 
 router = APIRouter()
@@ -10,8 +10,9 @@ def train_model(request: TrainRequest, background_tasks: BackgroundTasks):
     """
     Starts model training in the background.
     """
-    background_tasks.add_task(ai_service.train_model, request)
-    return {"message": "Training started", "model_name": request.model_name}
+    model_id = ai_service.train_model(request)
+    background_tasks.add_task(ai_service._train_implementation, model_id, request)
+    return {"message": "Training started", "model_id": model_id, "model_name": request.model_name}
 
 @router.get("/models", response_model=List[ModelMetadata])
 def list_models():
@@ -37,8 +38,8 @@ def retrain_model(model_id: str, background_tasks: BackgroundTasks):
     Retrains an existing model with the latest data from its dataset.
     """
     try:
-
-        background_tasks.add_task(ai_service.retrain_model, model_id)
+        request = ai_service.retrain_model(model_id)
+        background_tasks.add_task(ai_service._train_implementation, model_id, request)
         return {"message": "Retraining started", "model_id": model_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -63,5 +64,15 @@ def predict_batch(model_id: str, input_data: List[Dict]):
     try:
         results = ai_service.predict_batch(model_id, input_data)
         return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/models/{model_id}/predict/range")
+def predict_range(model_id: str, request: PredictRangeRequest):
+    """
+    Forecasting: Generates predictions for a future time range.
+    """
+    try:
+        return ai_service.predict_range(model_id, request.periods, request.frequency, request.context_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -26,7 +26,11 @@ interface Dataset {
 
 type ModelType = 'random_forest' | 'xgboost' | 'tensorflow' | '';
 
-export default function TrainingForm() {
+interface TrainingFormProps {
+    onSuccess?: () => void;
+}
+
+export default function TrainingForm({ onSuccess }: TrainingFormProps) {
     const [datasets, setDatasets] = useState<Dataset[]>([]);
     const [selectedDataset, setSelectedDataset] = useState<string>('');
     const [columns, setColumns] = useState<string[]>([]);
@@ -165,6 +169,9 @@ export default function TrainingForm() {
             setSelectedDataset('');
             setRowCount(null);
             setSelectedModel('');
+
+            if (onSuccess) onSuccess();
+
 
         } catch (error) {
             console.error(error);
@@ -465,6 +472,6 @@ export default function TrainingForm() {
                     )}
                 </Button>
             </div>
-        </form>
+        </form >
     );
 }

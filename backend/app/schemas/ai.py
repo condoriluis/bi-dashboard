@@ -15,6 +15,14 @@ class PredictionRequest(BaseModel):
     model_id: str
     input_data: Dict[str, Any]
 
+class PredictRangeRequest(BaseModel):
+    # model_id is in path, not needed in body
+    periods: int = 7
+    frequency: str = "D" # D, M, H
+    # Optional context for non-date features. 
+    # If not provided, will use mean/mode from training (if avail) or 0
+    context_data: Optional[Dict[str, Any]] = None
+
 class ModelMetadata(BaseModel):
     id: str
     name: str
@@ -23,6 +31,7 @@ class ModelMetadata(BaseModel):
     feature_columns: List[str]
     model_type: Optional[str] = "tensorflow"
     status: str  # 'training', 'completed', 'failed'
+    progress: float = 0
     created_at: datetime
     metrics: Optional[Dict[str, float]] = None
     error: Optional[str] = None

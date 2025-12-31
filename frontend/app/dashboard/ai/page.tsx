@@ -65,7 +65,7 @@ export default function AIPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {activeTab === "train" && <TrainingForm />}
+                            {activeTab === "train" && <TrainingForm onSuccess={() => setActiveTab('models')} />}
                         </CardContent>
                     </Card>
                 </TabsContent>

@@ -188,7 +188,7 @@ export default function TransformationsPage() {
                         Transformaciones de Datos
                     </h1>
                     <p className="text-muted-foreground">
-                        Crea vistas SQL persistentes para limpiar, transformar y modelar tus datos.
+                        Crea vistas, tablas SQL persistentes para limpiar, transformar y modelar tus datos.
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 items-end">
