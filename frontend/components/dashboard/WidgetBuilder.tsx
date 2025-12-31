@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { WidgetConfig } from "@/lib/utils";
 import { useDashboard } from "@/contexts/DashboardContext";
-import { BarChart3, Binary, Table as TableIcon, Sparkles, ArrowUp, ArrowDown, AlignLeft, LineChart, AreaChart, PieChart, Circle, DatabaseIcon, Globe, BarChart, Activity, X, Plus, Trash2 } from "lucide-react";
+import { BarChart3, Binary, Table as TableIcon, Sparkles, ArrowUp, ArrowDown, AlignLeft, LineChart, AreaChart, PieChart, Circle, DatabaseIcon, Globe, BarChart, Activity, X, Plus, Trash2, LayoutGrid, ScatterChart, Target, Filter, BarChartBig, Layers } from "lucide-react";
 
 interface WidgetBuilderProps {
     open: boolean;
@@ -73,7 +73,6 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
         }
     }, [open, initialConfig]);
 
-    // Fetch Datasets
     const { data: datasets } = useQuery<Dataset[]>({
         queryKey: ["datasets"],
         queryFn: async () => {
@@ -502,6 +501,12 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                         { id: 'area', label: 'Área', icon: AreaChart },
                                         { id: 'pie', label: 'Circular', icon: PieChart },
                                         { id: 'donut', label: 'Donut', icon: Circle },
+                                        { id: 'heatmap', label: 'Mapa de Calor', icon: LayoutGrid },
+                                        { id: 'scatter', label: 'Dispersión', icon: ScatterChart },
+                                        { id: 'mixed', label: 'Mixto (Columna + Línea)', icon: Layers },
+                                        { id: 'polarArea', label: 'Área Polar', icon: Target },
+                                        { id: 'funnel', label: 'Embudo', icon: Filter },
+                                        { id: 'column', label: 'Columnas', icon: BarChartBig },
                                     ].map((chart) => (
                                         <Button
                                             key={chart.id}

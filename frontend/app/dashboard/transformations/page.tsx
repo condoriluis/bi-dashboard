@@ -296,7 +296,7 @@ export default function TransformationsPage() {
                                         >
                                             <div className="absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl rounded-full bg-primary transition-opacity duration-500 group-hover:opacity-20" />
 
-                                            <CardHeader className="relative z-10 pb-3">
+                                            <CardHeader className="relative z-10 pb-0">
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -325,7 +325,7 @@ export default function TransformationsPage() {
                                                 </div>
                                             </CardHeader>
 
-                                            <CardContent className="relative z-10 space-y-3">
+                                            <CardContent className="relative z-10 space-y-0">
                                                 {transformation.description && (
                                                     <p className="text-sm text-muted-foreground line-clamp-2">
                                                         {transformation.description}

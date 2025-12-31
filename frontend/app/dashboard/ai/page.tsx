@@ -25,9 +25,9 @@ export default function AIPage() {
                         </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Badge className="px-3 py-1 bg-orange-500 text-white hover:bg-orange-600 border-orange-600/20 font-bold shadow-sm">
+                        <Badge className="px-3 py-1 bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-700/20 font-bold shadow-sm">
                             <Brain className="h-3 w-3 mr-1.5" />
-                            TensorFlow
+                            Red Neuronal
                         </Badge>
                     </div>
                 </div>

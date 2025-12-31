@@ -282,7 +282,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
     if (config.type === 'chart') {
         let series: any[] = [];
         let categories: any[] = [];
-        const isCircular = config.chartType === 'pie' || config.chartType === 'donut';
+        const isCircular = config.chartType === 'pie' || config.chartType === 'donut' || config.chartType === 'polarArea';
 
         if (config.breakdown && !isCircular) {
             const breakdownField = config.breakdown;
@@ -324,6 +324,21 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             }) || [];
 
             series = isCircular ? seriesData : [{ name: config.yAxis || 'Valor', data: seriesData }];
+        }
+
+        if (config.chartType === 'mixed') {
+            if (config.breakdown) {
+                series = series.map((s: any, idx: number) => ({
+                    ...s,
+                    type: idx === 0 ? 'column' : 'line'
+                }));
+            } else {
+                const baseData = series[0].data;
+                series = [
+                    { name: (config.yAxis || 'Valor'), data: baseData, type: 'column' },
+                    { name: 'Tendencia', data: baseData, type: 'line' }
+                ];
+            }
         }
 
         let colors = ['#0ea5e9', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'];
@@ -393,7 +408,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                         colors: '#94a3b8',
                         fontSize: '12px'
                     },
-                    formatter: config.chartType === 'bar-horizontal'
+                    formatter: (config.chartType === 'bar-horizontal' || config.chartType === 'funnel')
                         ? (val: string) => formatNumber(Number(val))
                         : undefined,
                     rotate: -45,
@@ -406,7 +421,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                 show: !isCircular,
                 labels: {
                     style: { colors: '#94a3b8', fontSize: '12px' },
-                    formatter: config.chartType === 'bar-horizontal'
+                    formatter: (config.chartType === 'bar-horizontal' || config.chartType === 'funnel' || config.chartType === 'heatmap')
                         ? (val: any) => val
                         : (val: number) => formatFn(val)
                 }
@@ -415,15 +430,18 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                 show: !isCircular,
                 borderColor: 'rgba(226, 232, 240, 0.1)',
                 strokeDashArray: 4,
-                xaxis: { lines: { show: config.chartType === 'bar-horizontal' } },
-                yaxis: { lines: { show: config.chartType !== 'bar-horizontal' } }
+                xaxis: { lines: { show: (config.chartType === 'bar-horizontal' || config.chartType === 'funnel') } },
+                yaxis: { lines: { show: (config.chartType !== 'bar-horizontal' && config.chartType !== 'funnel') } }
             },
             dataLabels: {
-                enabled: isCircular || (config.chartType === 'bar' && !config.breakdown),
+                enabled: isCircular || config.chartType === 'funnel' || ((config.chartType === 'bar' || config.chartType === 'column') && !config.breakdown),
                 style: {
                     colors: ['#fff']
                 },
-                dropShadow: { enabled: true }
+                dropShadow: { enabled: true },
+                background: {
+                    enabled: false
+                }
             },
             tooltip: {
                 theme: 'dark',
@@ -444,13 +462,18 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                     show: true,
                 }
             },
+            markers: {
+                size: (config.chartType === 'scatter' || config.chartType === 'mixed') ? 4 : 0,
+                hover: { size: (config.chartType === 'scatter' || config.chartType === 'mixed') ? 6 : undefined }
+            },
             stroke: {
                 curve: 'smooth',
-                width: isCircular ? 0 : (config.chartType === 'area' ? 3 : 2)
+                width: (config.chartType === 'polarArea') ? 1 : ((isCircular || config.chartType === 'scatter' || config.chartType === 'heatmap') ? 0 : (config.chartType === 'area' ? 3 : 2)),
+                colors: (config.chartType === 'polarArea') ? ['#fff'] : undefined
             },
             fill: {
-                type: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'line') ? 'solid' : 'gradient',
-                opacity: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'line') ? 1 : 0.85,
+                type: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed') ? 'solid' : 'gradient',
+                opacity: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed') ? 1 : 0.85,
                 gradient: (config.chartType === 'area') ? {
                     shadeIntensity: 1,
                     opacityFrom: 0.7,
@@ -461,9 +484,12 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             plotOptions: {
                 bar: {
                     borderRadius: 4,
-                    columnWidth: '60%',
-                    distributed: (config.chartType === 'bar' || config.chartType === 'bar-horizontal') && !config.color && !config.breakdown,
-                    horizontal: config.chartType === 'bar-horizontal',
+                    columnWidth: config.chartType === 'funnel' ? '80%' : '60%',
+                    distributed: (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'mixed') && (!config.color || config.color === 'default') && !config.breakdown,
+                    horizontal: config.chartType === 'bar-horizontal' || config.chartType === 'funnel',
+                    isFunnel: config.chartType === 'funnel',
+                    isDumbbell: false,
+                    isRangeBar: false,
                 },
                 pie: {
                     donut: {
@@ -479,6 +505,21 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                             }
                         }
                     }
+                },
+                polarArea: {
+                    rings: {
+                        strokeWidth: 1,
+                        strokeColor: 'rgba(226, 232, 240, 0.1)',
+                    },
+                    spokes: {
+                        strokeWidth: 1,
+                        connectorColor: 'rgba(226, 232, 240, 0.1)',
+                    }
+                },
+                heatmap: {
+                    radius: 2,
+                    enableShades: true,
+                    shadeIntensity: 0.5,
                 }
             },
             legend: {
@@ -511,7 +552,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                             key={`${config.id}-${config.color}-${config.chartType}`}
                             options={chartOptions}
                             series={series}
-                            type={(config.chartType === 'bar-horizontal' ? 'bar' : config.chartType) || "bar"}
+                            type={((config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel') ? 'bar' : (config.chartType === 'mixed' ? 'line' : config.chartType)) as any || "bar"}
                             height="100%"
                             width="100%"
                         />

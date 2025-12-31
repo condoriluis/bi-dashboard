@@ -10,7 +10,7 @@ export interface WidgetConfig {
   type: 'metric' | 'chart' | 'table' | 'map';
   title: string;
   dataset: string;
-  chartType?: 'bar' | 'bar-horizontal' | 'line' | 'area' | 'pie' | 'donut';
+  chartType?: 'bar' | 'bar-horizontal' | 'line' | 'area' | 'pie' | 'donut' | 'heatmap' | 'scatter' | 'polarArea' | 'funnel' | 'column' | 'mixed';
   xAxis?: string;
   breakdown?: string;
   yAxis?: string;

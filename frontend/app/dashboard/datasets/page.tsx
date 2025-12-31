@@ -507,12 +507,12 @@ export default function DatasetsPage() {
                                         {showOnlyDashboardDatasets ? (
                                             <>
                                                 <Filter className="h-4 w-4 md:mr-0 2xl:mr-2" />
-                                                <span className="md:hidden 2xl:inline ml-2">Solo de este Dashboard</span>
+                                                <span className="md:inline 2xl:inline ml-2">Solo de este Dashboard</span>
                                             </>
                                         ) : (
                                             <>
                                                 <FilterX className="h-4 w-4 md:mr-0 2xl:mr-2" />
-                                                <span className="md:hidden 2xl:inline ml-2">Todos los Datasets</span>
+                                                <span className="md:inline 2xl:inline ml-2">Todos los Datasets</span>
                                             </>
                                         )}
                                     </Button>
