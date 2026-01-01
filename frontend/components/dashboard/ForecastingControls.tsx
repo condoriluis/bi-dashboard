@@ -19,7 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Loader2, Calendar } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 
@@ -34,9 +34,12 @@ interface ForecastingControlsProps {
     datasetName: string;
     onForecast: (data: any[], modelName: string, horizon: number) => void;
     currentChartType: string;
+    isTimeSeries?: boolean;
+    hasForecast?: boolean;
+    onClear?: () => void;
 }
 
-export function ForecastingControls({ datasetName, onForecast, currentChartType }: ForecastingControlsProps) {
+export function ForecastingControls({ datasetName, onForecast, currentChartType, isTimeSeries = true, hasForecast, onClear }: ForecastingControlsProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [models, setModels] = useState<Model[]>([]);
@@ -98,16 +101,28 @@ export function ForecastingControls({ datasetName, onForecast, currentChartType 
         }
     };
 
+    const triggerButton = (
+        <Button
+            variant={hasForecast ? "secondary" : "outline"}
+            size="sm"
+            className={`flex items-center gap-1 h-6 text-xs border-dashed cursor-pointer px-2 sm:px-1 ${hasForecast
+                ? "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800"
+                : "border-purple-400 text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-500/50 dark:hover:bg-purple-900/20"
+                }`}
+        >
+            🤖 <span className="font-semibold hidden sm:inline md:hidden lg:inline">{hasForecast ? "Proyectado" : "Proyectar"}</span>
+        </Button>
+    );
+
+    if (!isTimeSeries) return null;
+
     return (
         <Dialog open={open} onOpenChange={(val) => {
             setOpen(val);
             if (val) fetchModels();
         }}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 h-8 text-xs border-dashed border-purple-400 text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-500/50 dark:hover:bg-purple-900/20 cursor-pointer">
-                    🤖
-                    <span className="font-semibold">Proyectar Futuro</span>
-                </Button>
+                {triggerButton}
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
@@ -133,12 +148,12 @@ export function ForecastingControls({ datasetName, onForecast, currentChartType 
                         </div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="model" className="text-right">
+                            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                                <Label htmlFor="model" className="text-left sm:text-right">
                                     Modelo
                                 </Label>
                                 <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-                                    <SelectTrigger id="model" className="col-span-3">
+                                    <SelectTrigger id="model" className="col-span-1 sm:col-span-3">
                                         <SelectValue placeholder="Selecciona un modelo" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -147,7 +162,7 @@ export function ForecastingControls({ datasetName, onForecast, currentChartType 
                                             const isMatch = normalize(m.dataset_name) === normalize(datasetName);
                                             return (
                                                 <SelectItem key={m.id} value={m.id} className={isMatch ? "font-semibold" : "text-muted-foreground"}>
-                                                    <span className="block w-[200px] sm:w-[260px] truncate" title={`${m.name} (${m.dataset_name})`}>
+                                                    <span className="block w-full max-w-[200px] sm:max-w-[260px] truncate" title={`${m.name} (${m.dataset_name})`}>
                                                         {m.name} {isMatch ? "(Recomendado)" : `(${m.dataset_name})`}
                                                     </span>
                                                 </SelectItem>
@@ -156,12 +171,12 @@ export function ForecastingControls({ datasetName, onForecast, currentChartType 
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="horizon" className="text-right">
+                            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                                <Label htmlFor="horizon" className="text-left sm:text-right">
                                     Horizonte
                                 </Label>
                                 <Select value={horizon} onValueChange={setHorizon}>
-                                    <SelectTrigger id="horizon" className="col-span-3">
+                                    <SelectTrigger id="horizon" className="col-span-1 sm:col-span-3">
                                         <SelectValue placeholder="Duración de la proyección" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -176,8 +191,23 @@ export function ForecastingControls({ datasetName, onForecast, currentChartType 
                     )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
                     <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+
+                    {hasForecast && onClear && (
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                onClear();
+                                setOpen(false);
+                                toast.success("Proyección eliminada");
+                            }}
+                            className="mr-auto"
+                        >
+                            Quitar
+                        </Button>
+                    )}
+
                     {models.length > 0 && (
                         <Button
                             onClick={handleRunForecast}
@@ -185,7 +215,7 @@ export function ForecastingControls({ datasetName, onForecast, currentChartType 
                             className="bg-purple-600 hover:bg-purple-700 text-white"
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Generar Proyección
+                            {hasForecast ? "Actualizar Proyección" : "Generar Proyección"}
                         </Button>
                     )}
                 </DialogFooter>

@@ -36,7 +36,10 @@ export default function Sidebar() {
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    const [mounted, setMounted] = useState(false);
+
     useEffect(() => {
+        setMounted(true);
         const saved = localStorage.getItem('sidebar-fullscreen');
         if (saved === 'true') {
             setIsFullscreen(true);
@@ -207,7 +210,7 @@ export default function Sidebar() {
                                 "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:border hover:border-border/50"
                             )}
                         >
-                            <div className="relative h-5 w-5 flex-shrink-0">
+                            <span className="relative h-5 w-5 flex-shrink-0">
                                 <Maximize2 className={cn(
                                     "h-5 w-5 absolute transition-all duration-300 text-emerald-500",
                                     isFullscreen ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
@@ -216,19 +219,19 @@ export default function Sidebar() {
                                     "h-5 w-5 absolute transition-all duration-300 text-emerald-500",
                                     isFullscreen ? "rotate-0 scale-100 opacity-100" : "rotate-90 scale-0 opacity-0"
                                 )} />
-                            </div>
+                            </span>
                             <span className={cn(
                                 "text-sm whitespace-nowrap transition-all duration-300",
                                 isExpanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
                             )}>
                                 {isFullscreen ? "Mostrar Sidebar" : "Pantalla Completa"}
                             </span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <span className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </button>
                     </SimpleTooltip>
 
                     {/* Theme Toggle */}
-                    <SimpleTooltip content={isExpanded ? "" : theme === "dark" ? "Modo Claro" : "Modo Oscuro"} side="right">
+                    <SimpleTooltip content={isExpanded ? "" : mounted && theme === "dark" ? "Modo Claro" : "Modo Oscuro"} side="right">
                         <button
                             onClick={toggleTheme}
                             className={cn(
@@ -236,17 +239,17 @@ export default function Sidebar() {
                                 "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:border hover:border-border/50"
                             )}
                         >
-                            <div className="relative h-5 w-5 flex-shrink-0">
+                            <span className="relative h-5 w-5 flex-shrink-0">
                                 <Sun className="h-5 w-5 absolute rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0 text-amber-500" />
                                 <Moon className="h-5 w-5 absolute rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100 text-blue-400" />
-                            </div>
+                            </span>
                             <span className={cn(
                                 "text-sm whitespace-nowrap transition-all duration-300",
                                 isExpanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
                             )}>
-                                {theme === "dark" ? "Modo Oscuro" : "Modo Claro"}
+                                {mounted && theme === "dark" ? "Modo Oscuro" : "Modo Claro"}
                             </span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <span className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </button>
                     </SimpleTooltip>
 
@@ -265,7 +268,7 @@ export default function Sidebar() {
                                     )}>
                                         {user?.full_name || "Usuario"}
                                     </span>
-                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <span className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 </button>
                             </DialogTrigger>
                         </SimpleTooltip>
@@ -317,7 +320,7 @@ export default function Sidebar() {
                             )}>
                                 Cerrar Sesión
                             </span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-destructive/5 to-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <span className="absolute inset-0 bg-gradient-to-r from-destructive/5 to-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </Button>
                     </SimpleTooltip>
                 </div>
@@ -382,7 +385,7 @@ export default function Sidebar() {
                         onClick={toggleTheme}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-accent transition-colors border border-transparent hover:border-border/50"
                     >
-                        <span className="text-sm text-muted-foreground">{theme === "dark" ? "Modo Oscuro" : "Modo Claro"}</span>
+                        <span className="text-sm text-muted-foreground">{mounted && theme === "dark" ? "Modo Oscuro" : "Modo Claro"}</span>
                         <div className="relative h-5 w-5">
                             <Sun className="h-5 w-5 absolute rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0 text-amber-500" />
                             <Moon className="h-5 w-5 absolute rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100 text-blue-400" />

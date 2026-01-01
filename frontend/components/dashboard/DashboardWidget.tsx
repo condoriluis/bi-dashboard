@@ -245,7 +245,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                     style={{ backgroundColor: hasColor ? config.color : 'hsl(var(--primary))' }}
                 />
 
-                <CardHeader className="flex flex-row items-center justify-between relative z-10 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between relative z-10 pb-0 pr-2">
                     <div className="space-y-1">
                         <CardTitle className="text-base font-semibold text-foreground">
                             {config.title}
@@ -254,12 +254,14 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                             {config.dataset}
                         </CardDescription>
                     </div>
-                    <DashboardWidgetMenu
-                        config={config}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                        onExport={handleDownloadCSV}
-                    />
+                    <div className="-mr-2">
+                        <DashboardWidgetMenu
+                            config={config}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onExport={handleDownloadCSV}
+                        />
+                    </div>
                 </CardHeader>
 
                 <CardContent className="relative z-10 space-y-2">
@@ -289,7 +291,6 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
         let categories: any[] = [];
         const isCircular = config.chartType === 'pie' || config.chartType === 'donut' || config.chartType === 'polarArea';
 
-        // ... [Existing Breakdown Logic] ...
         if (config.breakdown && !isCircular) {
             const breakdownField = config.breakdown;
             const xAxisField = config.xAxis || 'x';
@@ -304,7 +305,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             });
 
         } else {
-            // Standard Chart Logic
+
             const seriesData = result?.map((row: any) => {
                 if (row.value !== undefined) return row.value;
                 if (row.y_val !== undefined) return row.y_val;
@@ -321,9 +322,14 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             }) || [];
 
             series = isCircular ? seriesData : [{ name: config.yAxis || 'Valor', data: seriesData }];
+            series = isCircular ? seriesData : [{ name: config.yAxis || 'Valor', data: seriesData }];
         }
 
-        // --- MERGE FORECAST DATA ---
+        const isTimeSeries = categories.length > 0 && categories.slice(0, 5).every(c => {
+            const str = String(c);
+            return !isNaN(Date.parse(str)) || /^\d{4}[-/]\d{2}[-/]\d{2}/.test(str);
+        });
+
         if (forecastData.length > 0 && !isCircular) {
             const lastCategory = categories[categories.length - 1];
 
@@ -341,11 +347,12 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
             const predictionValues = forecastData.map(f => f.prediction);
 
+            const forecastSeriesType = (['bar', 'column', 'bar-horizontal'].includes(config.chartType || '')) ? 'column' : 'line';
             series.push({
                 name: `Proyección (${forecastModelName})`,
                 data: [...nullsForHistory, ...predictionValues],
-                type: 'line',
-                dashArray: 5,
+                type: (config.chartType === 'area') ? 'area' : (forecastSeriesType === 'column' ? 'bar' : 'line'),
+                dashArray: (config.chartType === 'area' || config.chartType === 'line') ? 5 : 0,
                 color: '#9333ea'
             });
 
@@ -390,7 +397,6 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                 stacked: !!config.breakdown && (config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'area') && !forecastData.length,
                 toolbar: {
                     show: true,
-                    // ... existing toolbar tools ...
                     tools: {
                         download: true,
                         selection: true,
@@ -411,7 +417,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                 width: forecastData.length ? 2 : ((config.chartType === 'polarArea') ? 1 : ((isCircular || config.chartType === 'scatter' || config.chartType === 'heatmap') ? 0 : (config.chartType === 'area' ? 3 : 2))),
                 dashArray: forecastData.length ? series.map(s => s.dashArray || 0) : 0
             },
-            // ... theme ...
+
             theme: {
                 mode: isDarkMode ? 'dark' : 'light',
                 monochrome: isMonochrome ? {
@@ -448,7 +454,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                 xaxis: { lines: { show: (config.chartType === 'bar-horizontal' || config.chartType === 'funnel') } },
                 yaxis: { lines: { show: (config.chartType !== 'bar-horizontal' && config.chartType !== 'funnel') } }
             },
-            // ... dataLabels ...
+
             dataLabels: {
                 enabled: isCircular || config.chartType === 'funnel' || ((config.chartType === 'bar' || config.chartType === 'column') && !config.breakdown && !forecastData.length),
                 style: { colors: ['#fff'] },
@@ -457,20 +463,20 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
             },
             tooltip: {
                 theme: 'dark',
-                // ...
+
                 style: { fontSize: '12px', fontFamily: 'inherit' },
                 y: { formatter: (val: number) => config.yAxis ? formatFn(val) : val },
                 fixed: { enabled: false, position: 'topRight', offsetX: 0, offsetY: 0 },
                 marker: { show: true }
             },
             markers: {
-                size: (config.chartType === 'scatter' || config.chartType === 'mixed' || forecastData.length) ? 4 : 0,
+                size: (config.chartType === 'scatter' || config.chartType === 'mixed' || (forecastData.length && config.chartType !== 'area')) ? 4 : 0,
                 hover: { size: 6 }
             },
             fill: {
-                type: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed' || forecastData.length) ? 'solid' : 'gradient',
-                opacity: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed' || forecastData.length) ? 1 : 0.85,
-                gradient: (config.chartType === 'area' && !forecastData.length) ? {
+                type: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed' || (forecastData.length && config.chartType !== 'area')) ? 'solid' : 'gradient',
+                opacity: (isCircular || config.chartType === 'bar' || config.chartType === 'bar-horizontal' || config.chartType === 'column' || config.chartType === 'funnel' || config.chartType === 'line' || config.chartType === 'scatter' || config.chartType === 'heatmap' || config.chartType === 'mixed' || (forecastData.length && config.chartType !== 'area')) ? 1 : 0.85,
+                gradient: (config.chartType === 'area') ? {
                     shadeIntensity: 1,
                     opacityFrom: 0.7,
                     opacityTo: 0.2,
@@ -503,26 +509,29 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
         return (
             <Card className="flex flex-col h-full border-primary/20 hover:shadow-lg transition-all duration-300 col-span-2 group overflow-visible">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-base font-semibold">{config.title}</CardTitle>
-                        <CardDescription className="text-xs font-medium tracking-wider text-muted-foreground/70">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pr-2">
+                    <div className="flex-1 min-w-0">
+                        <CardTitle className="text-base font-semibold truncate" title={config.title}>{config.title}</CardTitle>
+                        <CardDescription className="text-xs font-medium tracking-wider text-muted-foreground/70 truncate">
                             {config.dataset}
                         </CardDescription>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-shrink-0 -mr-2">
                         <ForecastingControls
                             datasetName={config.dataset || ""}
                             currentChartType={config.chartType || "bar"}
+                            isTimeSeries={isTimeSeries}
+                            hasForecast={forecastData.length > 0}
                             onForecast={(data, modelName, horizon) => {
                                 setForecastData(data);
                                 setForecastModelName(modelName);
                             }}
+                            onClear={() => setForecastData([])}
                         />
                         <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} />
                     </div>
                 </CardHeader>
-                <CardContent className="h-full flex-1 min-h-0 pb-4 overflow-visible relative z-10 px-4">
+                <CardContent className="h-full flex-1 min-h-0 pb-0 overflow-visible relative z-10 px-1">
                     <div className="h-full w-full min-h-[300px]">
                         <Chart
                             key={`${config.id}-${config.color}-${config.chartType}-${forecastData.length}`}
@@ -550,14 +559,16 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
         return (
             <Card className="flex flex-col h-full border-primary/20 hover:shadow-lg transition-all duration-300 col-span-2 overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pr-2">
                     <div>
                         <CardTitle className="text-base font-semibold">{config.title}</CardTitle>
                         <CardDescription className="text-xs font-medium tracking-wider text-muted-foreground/70">
                             {config.dataset}
                         </CardDescription>
                     </div>
-                    <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} onExport={handleDownloadCSV} />
+                    <div className="-mr-2">
+                        <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} onExport={handleDownloadCSV} />
+                    </div>
                 </CardHeader>
                 <CardContent className="flex-1 min-h-0 overflow-auto p-0">
                     <Table>
@@ -655,14 +666,16 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
         return (
             <Card className="flex flex-col h-full border-primary/20 hover:shadow-lg transition-all duration-300 col-span-2 group overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between z-10 bg-card/50 backdrop-blur-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pr-2">
                     <div>
                         <CardTitle className="text-base font-semibold">{config.title}</CardTitle>
                         <CardDescription className="text-xs font-medium tracking-wider text-muted-foreground/70">
                             {config.dataset}
                         </CardDescription>
                     </div>
-                    <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} onExport={handleDownloadCSV} />
+                    <div className="-mr-2">
+                        <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} onExport={handleDownloadCSV} />
+                    </div>
                 </CardHeader>
                 <CardContent className="h-full flex-1 min-h-0 p-0 relative">
                     {hasData ? (

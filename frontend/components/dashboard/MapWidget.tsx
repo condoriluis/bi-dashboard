@@ -91,9 +91,12 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
 
     const attribution = '&copy; <a href="https://carto.com/">CARTO</a>';
 
+    const mapKey = `${config.id}-${isDarkMode ? 'dark' : 'light'}-${viewMode}`;
+
     return (
         <div className="relative h-full w-full group">
             <MapContainer
+                key={mapKey}
                 center={[-16.2902, -63.5887]}
                 zoom={5}
                 style={{ height: "100%", width: "100%", borderRadius: "0.5rem", zIndex: 0 }}
@@ -123,7 +126,7 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
 
                     return (
                         <CircleMarker
-                            key={i}
+                            key={`${i}-${row.lat}-${row.lon}`}
                             center={[row.lat, row.lon]}
                             pathOptions={{
                                 fillColor: fillColor,
@@ -250,18 +253,26 @@ function HeatmapLayer({ points }: { points: any[] }) {
             if (cancelled) return;
 
             if ((L as any).heatLayer) {
-                heatLayer = (L as any).heatLayer(points, {
-                    radius: 25,
-                    blur: 15,
-                    maxZoom: 10,
-                    gradient: {
-                        0.4: 'blue',
-                        0.6: 'cyan',
-                        0.7: 'lime',
-                        0.8: 'yellow',
-                        1.0: 'red'
+                try {
+                    heatLayer = (L as any).heatLayer(points, {
+                        radius: 25,
+                        blur: 15,
+                        maxZoom: 10,
+                        gradient: {
+                            0.4: 'blue',
+                            0.6: 'cyan',
+                            0.7: 'lime',
+                            0.8: 'yellow',
+                            1.0: 'red'
+                        }
+                    });
+
+                    if (map && !cancelled) {
+                        heatLayer.addTo(map);
                     }
-                }).addTo(map);
+                } catch (e) {
+                    console.error("Error adding heat layer", e);
+                }
             }
         };
 
@@ -269,8 +280,12 @@ function HeatmapLayer({ points }: { points: any[] }) {
 
         return () => {
             cancelled = true;
-            if (heatLayer) {
-                map.removeLayer(heatLayer);
+            try {
+                if (heatLayer && map) {
+                    map.removeLayer(heatLayer);
+                }
+            } catch (e) {
+                // Ignore cleanup errors if map is gone
             }
         };
     }, [points, map]);

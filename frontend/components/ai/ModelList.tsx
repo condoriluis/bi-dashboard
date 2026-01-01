@@ -194,7 +194,7 @@ export default function ModelList() {
                 const { icon, color, label } = getModelIcon(model.model_type);
 
                 return (
-                    <Card key={model.id} className="group flex flex-col h-full border-primary/20 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden relative animate-in fade-in-50 slide-in-from-bottom duration-500 bg-card/50 backdrop-blur-sm pb-0">
+                    <Card key={model.id} className="group flex flex-col h-full border-primary/20 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 relative animate-in fade-in-50 slide-in-from-bottom duration-500 bg-card/50 backdrop-blur-sm pb-0">
                         <div className="absolute top-0 right-0 p-2 flex gap-2 z-10">
                             <Badge variant="outline" className={`${color} bg-background/80 backdrop-blur-md border-current/20 shadow-sm`}>
                                 {label}
