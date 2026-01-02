@@ -23,10 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import { formatCurrency, formatNumber } from '@/lib/utils';
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatNumber } from '@/lib/utils';
 
 interface Model {
     id: string;

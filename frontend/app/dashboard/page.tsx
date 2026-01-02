@@ -168,7 +168,7 @@ export default function DashboardPage() {
     return (
         <div className="space-y-4">
             <div id="dashboard-export-container" ref={dashboardRef}>
-                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/40 -mx-4 sm:-mx-6 lg:-mx-4 px-4 sm:px-6 lg:px-4 py-0">
+                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/40 -mx-4 sm:-mx-6 lg:-mx-4 px-4 sm:px-6 lg:px-4 py-0 mb-2">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-in slide-in-from-left duration-500">
                         {currentDashboard && (
                             <div className="space-y-1">

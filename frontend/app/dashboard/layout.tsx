@@ -70,7 +70,7 @@ export default function DashboardLayout({
                     "flex-1 flex flex-col transition-all duration-300 min-w-0",
                     isFullscreen ? "lg:ml-0" : "lg:ml-16"
                 )}>
-                    <main className="flex-1 w-full max-w-8xl mx-auto px-4 sm:px-4 lg:px-4 py-3 pb-32 animate-in fade-in-50 duration-500 min-w-0">
+                    <main className="flex-1 w-full max-w-8xl mx-auto px-4 sm:px-4 lg:px-4 my-3 pb-32 animate-in fade-in-50 duration-500 min-w-0">
                         {children}
                     </main>
                     <Footer />
