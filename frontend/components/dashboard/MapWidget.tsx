@@ -86,8 +86,8 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
     if (!mounted) return <div className="h-full w-full bg-muted/20 animate-pulse rounded-lg" />;
 
     const tileLayerUrl = isDarkMode
-        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
     const attribution = '&copy; <a href="https://carto.com/">CARTO</a>';
 

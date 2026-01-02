@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutDashboard, Sparkles } from "lucide-react";
+import { Plus, LayoutDashboard, Sparkles, Download } from "lucide-react";
 import { WidgetBuilder } from "@/components/dashboard/WidgetBuilder";
 import { DashboardWidget } from "@/components/dashboard/DashboardWidget";
 import { DashboardSelector } from "@/components/dashboard/DashboardSelector";
@@ -10,6 +10,7 @@ import { DashboardManager } from "@/components/dashboard/DashboardManager";
 import { WidgetConfig } from "@/lib/utils";
 import { dashboardService } from "@/services/dashboard";
 import { useDashboard } from "@/contexts/DashboardContext";
+import { exportDashboardToPNG } from "@/lib/exportUtils";
 
 export default function DashboardPage() {
     const {
@@ -28,6 +29,7 @@ export default function DashboardPage() {
     const [isBuilderOpen, setIsBuilderOpen] = useState(false);
     const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null);
     const [isWidgetsLoaded, setIsWidgetsLoaded] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const [isManagerOpen, setIsManagerOpen] = useState(false);
     const [managerMode, setManagerMode] = useState<'create' | 'edit' | 'delete'>('create');
@@ -35,6 +37,7 @@ export default function DashboardPage() {
 
     const skipNextLoadRef = useRef(false);
     const hasLoadedInitially = useRef(false);
+    const dashboardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!currentDashboard || isDashboardLoading) {
@@ -146,102 +149,136 @@ export default function DashboardPage() {
         }
     };
 
+    const handleExport = async () => {
+        if (!currentDashboard || !dashboardRef.current) return;
+
+        setIsExporting(true);
+        try {
+            await exportDashboardToPNG(
+                'dashboard-export-container',
+                currentDashboard.name.toLowerCase().replace(/\s+/g, '_')
+            );
+        } catch (error) {
+            console.error('Export failed:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     return (
         <div className="space-y-4">
-            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/40 -mx-4 sm:-mx-6 lg:-mx-4 px-4 sm:px-6 lg:px-4 py-0">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    {currentDashboard && (
-                        <div className="space-y-0.5 min-w-0 flex-shrink animate-in fade-in-50 duration-300">
-                            <h2 className="text-2xl lg:text-3xl font-bold truncate">{currentDashboard.name}</h2>
-                            {currentDashboard.description && (
-                                <p className="text-sm text-muted-foreground truncate">{currentDashboard.description}</p>
-                            )}
+            <div id="dashboard-export-container" ref={dashboardRef}>
+                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/40 -mx-4 sm:-mx-6 lg:-mx-4 px-4 sm:px-6 lg:px-4 py-0">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-in slide-in-from-left duration-500">
+                        {currentDashboard && (
+                            <div className="space-y-1">
+                                <h1 className="text-4xl font-bold">{currentDashboard.name}</h1>
+                                {currentDashboard.description && (
+                                    <p className="text-muted-foreground">{currentDashboard.description}</p>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:gap-4 hide-on-export">
+                            <DashboardSelector
+                                dashboards={dashboards}
+                                currentDashboardId={currentDashboardId}
+                                onDashboardChange={handleDashboardChange}
+                                onCreateDashboard={handleCreateDashboard}
+                                onEditDashboard={handleEditDashboard}
+                                onDeleteDashboard={handleDeleteDashboard}
+                            />
+
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={handleExport}
+                                    disabled={isExporting || widgets.length === 0}
+                                    variant="outline"
+                                    title="Exportar dashboard"
+                                    className="whitespace-nowrap cursor-pointer"
+                                >
+                                    {isExporting ? (
+                                        <Sparkles className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Download className="h-4 w-4" />
+                                    )}
+                                </Button>
+
+                                <Button
+                                    onClick={handleOpenBuilder}
+                                    title="Agregar widget"
+                                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/20 dark:text-white cursor-pointer whitespace-nowrap"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" /> Agregar Widget
+                                </Button>
+                            </div>
                         </div>
-                    )}
+                    </div>
+                </div>
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:gap-4">
-                        <DashboardSelector
-                            dashboards={dashboards}
-                            currentDashboardId={currentDashboardId}
-                            onDashboardChange={handleDashboardChange}
-                            onCreateDashboard={handleCreateDashboard}
-                            onEditDashboard={handleEditDashboard}
-                            onDeleteDashboard={handleDeleteDashboard}
-                        />
-
-                        <Button
-                            onClick={handleOpenBuilder}
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/20 dark:text-white cursor-pointer whitespace-nowrap"
-                        >
-                            <Plus className="mr-2 h-4 w-4" /> Agregar Widget
+                {!isWidgetsLoaded ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                        <Sparkles className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : widgets.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center min-h-[300px] border-2 border-dashed border-primary/20 rounded-xl bg-muted/10 animate-in fade-in-50">
+                        <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                            <LayoutDashboard className="h-10 w-10 text-primary/50" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-foreground">Este dashboard está vacío</h3>
+                        <p className="text-muted-foreground max-w-sm text-center mt-2 mb-6">
+                            Comienza agregando widgets para visualizar tus datos importantes.
+                        </p>
+                        <Button variant="outline" onClick={handleOpenBuilder} className="cursor-pointer">
+                            <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
+                            Crear mi primer Widget
                         </Button>
                     </div>
-                </div>
-            </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in-50 duration-700">
+                        {widgets.map((widget) => {
+                            const spanClass = {
+                                1: 'col-span-1',
+                                2: 'col-span-1 md:col-span-2',
+                                3: 'col-span-1 md:col-span-3',
+                                4: 'col-span-1 md:col-span-2 lg:col-span-4'
+                            }[widget.colSpan || (widget.type === 'metric' ? 1 : 2)] || 'col-span-2';
 
-            {!isWidgetsLoaded ? (
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <Sparkles className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : widgets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center min-h-[300px] border-2 border-dashed border-primary/20 rounded-xl bg-muted/10 animate-in fade-in-50">
-                    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                        <LayoutDashboard className="h-10 w-10 text-primary/50" />
+                            const heightClass = widget.type === 'metric' ? 'h-[180px]' :
+                                widget.type === 'table' ? 'h-[600px]' :
+                                    widget.type === 'map' ? 'h-[700px]' :
+                                        'h-[500px]';
+
+                            return (
+                                <div key={widget.id} className={`${spanClass} ${heightClass}`}>
+                                    <DashboardWidget
+                                        config={widget}
+                                        onDelete={handleDeleteWidget}
+                                        onEdit={handleEditWidget}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground">Este dashboard está vacío</h3>
-                    <p className="text-muted-foreground max-w-sm text-center mt-2 mb-6">
-                        Comienza agregando widgets para visualizar tus datos importantes.
-                    </p>
-                    <Button variant="outline" onClick={handleOpenBuilder} className="cursor-pointer">
-                        <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
-                        Crear mi primer Widget
-                    </Button>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in-50 duration-700">
-                    {widgets.map((widget) => {
-                        const spanClass = {
-                            1: 'col-span-1',
-                            2: 'col-span-1 md:col-span-2',
-                            3: 'col-span-1 md:col-span-3',
-                            4: 'col-span-1 md:col-span-2 lg:col-span-4'
-                        }[widget.colSpan || (widget.type === 'metric' ? 1 : 2)] || 'col-span-2';
+                )}
 
-                        const heightClass = widget.type === 'metric' ? 'h-[180px]' :
-                            widget.type === 'table' ? 'h-[600px]' :
-                                widget.type === 'map' ? 'h-[700px]' :
-                                    'h-[500px]';
+                {/* Widget Builder Dialog */}
+                <WidgetBuilder
+                    open={isBuilderOpen}
+                    onOpenChange={setIsBuilderOpen}
+                    onSave={handleSaveWidget}
+                    initialConfig={editingWidget}
+                />
 
-                        return (
-                            <div key={widget.id} className={`${spanClass} ${heightClass}`}>
-                                <DashboardWidget
-                                    config={widget}
-                                    onDelete={handleDeleteWidget}
-                                    onEdit={handleEditWidget}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Widget Builder Dialog */}
-            <WidgetBuilder
-                open={isBuilderOpen}
-                onOpenChange={setIsBuilderOpen}
-                onSave={handleSaveWidget}
-                initialConfig={editingWidget}
-            />
-
-            {/* Dashboard Manager Dialog */}
-            <DashboardManager
-                open={isManagerOpen}
-                onOpenChange={setIsManagerOpen}
-                onDashboardCreated={handleDashboardAction}
-                mode={managerMode}
-                currentDashboard={managingDashboard}
-            />
+                {/* Dashboard Manager Dialog */}
+                <DashboardManager
+                    open={isManagerOpen}
+                    onOpenChange={setIsManagerOpen}
+                    onDashboardCreated={handleDashboardAction}
+                    mode={managerMode}
+                    currentDashboard={managingDashboard}
+                />
+            </div>
         </div>
     );
 }
