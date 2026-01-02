@@ -375,7 +375,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
                 <DialogHeader className="px-6 pt-6 pb-4 border-b">
                     <DialogTitle className="text-2xl flex items-center gap-2">
                         <Sparkles className="h-6 w-6 text-primary" />
-                        {transformation ? "Editar Transformación" : "Nueva Transformación"}
+                        {transformation ? "Editar Vista SQL" : "Nueva Vista SQL"}
                     </DialogTitle>
                     <DialogDescription className="text-base">
                         Crea una vista SQL persistente para transformar tus datos de manera profesional
@@ -429,15 +429,14 @@ export default function TransformationDialog({ open, onClose, transformation, in
                             </TabsTrigger>
                         </TabsList>
 
-                        <div className="flex-1 overflow-y-auto pb-6">
+                        <div className="flex-1 overflow-y-auto pb-4">
                             {/* Tab 1: Configuration */}
                             <TabsContent value="config" className="mt-0 space-y-6">
                                 <Card className="border-2">
                                     <CardHeader>
                                         <CardTitle className="text-lg">Información Básica</CardTitle>
-                                        <CardDescription>Define los datos principales de tu transformación</CardDescription>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-2">
                                         <div className="grid gap-4 sm:grid-cols-2">
                                             <div className="space-y-2">
                                                 <Label htmlFor="name" className="text-sm font-semibold">
@@ -481,7 +480,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                                         </SelectContent>
                                                     </Select>
                                                     <p className="text-xs text-muted-foreground">
-                                                        La tabla base para tu transformación
+                                                        La tabla base para tu vista SQL
                                                     </p>
                                                 </div>
                                                 <div className="space-y-2">
@@ -514,7 +513,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                                 id="description"
                                                 value={description}
                                                 onChange={(e) => setDescription(e.target.value)}
-                                                placeholder="Describe qué hace esta transformación..."
+                                                placeholder="Describe qué hace esta vista transformada..."
                                             />
                                             <p className="text-xs text-muted-foreground">
                                                 Opcional: ayuda a otros usuarios a entender el propósito
@@ -835,7 +834,6 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                             <Code2 className="h-5 w-5 text-primary" />
                                             Definición SQL <span className="text-destructive text-base ml-1">*</span>
                                         </CardTitle>
-                                        <CardDescription>Escribe tu consulta SQL de transformación</CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-2">
                                         <Textarea
@@ -930,10 +928,10 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                             <div>
                                                 <CardTitle className="text-lg flex items-center gap-2">
                                                     <Eye className="h-5 w-5 text-primary" />
-                                                    Resultado de la Transformación
+                                                    Resultado de la Consulta SQL
                                                 </CardTitle>
                                                 <CardDescription className="mt-1">
-                                                    Vista previa de los primeros {previewData.length} registros transformados
+                                                    Vista previa de los primeros {previewData.length} registros obtenidos
                                                 </CardDescription>
                                             </div>
                                             <Badge variant="secondary" className="text-sm px-3 py-1">
@@ -943,16 +941,13 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                     </CardHeader>
                                     <CardContent className="px-0 pb-0">
                                         <div className="relative">
-                                            {/* Left scroll indicator */}
                                             {previewScrollLeft > 5 && (
                                                 <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-20 pointer-events-none" />
                                             )}
-                                            {/* Right scroll indicator */}
                                             {previewScrollRight > 5 && (
                                                 <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-20 pointer-events-none" />
                                             )}
 
-                                            {/* Scroll buttons */}
                                             {previewScrollLeft > 5 && (
                                                 <Button
                                                     type="button"
@@ -1024,7 +1019,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
 
                                         <div className="px-4 py-3 bg-muted/30 border-t text-xs text-muted-foreground flex items-center justify-between">
                                             <span className="flex items-center gap-2">
-                                                ✅ <strong>Validado:</strong> La transformación se ejecutó correctamente
+                                                ✅ <strong>Validado:</strong> La consulta SQL se ejecutó correctamente
                                             </span>
                                             <span className="hidden sm:inline">Mostrando primeras {previewData.length} filas</span>
                                         </div>
@@ -1051,7 +1046,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
                             {!sourceTable && "Paso 1: Selecciona una tabla origen"}
                             {sourceTable && !sqlDefinition && "Paso 2: Escribe tu SQL"}
                             {sourceTable && sqlDefinition && previewData.length === 0 && "Paso 3: Prueba tu SQL"}
-                            {previewData.length > 0 && "¡Listo! Ahora puedes guardar la transformación"}
+                            {previewData.length > 0 && "¡Listo! Ahora puedes guardar los datos"}
                         </div>
                         <div className="flex flex-col-reverse sm:flex-row gap-2 sm:ml-auto">
                             <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
@@ -1070,7 +1065,7 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                 ) : (
                                     <>
                                         <Check className="mr-2 h-4 w-4" />
-                                        {transformation ? "Actualizar Transformación" : "Crear Transformación"}
+                                        {transformation ? "Actualizar Vista" : "Crear Vista"}
                                     </>
                                 )}
                             </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Brain, Loader2, Sparkles, Target, Database, Settings2, Zap, Layers, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { Brain, Loader2, Sparkles, Target, Database, Settings2, Zap, Layers, AlertCircle, CheckCircle2, Info, Search, ChevronRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,13 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Dataset {
     table_name?: string;
@@ -44,6 +51,10 @@ export default function TrainingForm({ onSuccess }: TrainingFormProps) {
     const [rowCount, setRowCount] = useState<number | null>(null);
     const [selectedModel, setSelectedModel] = useState<ModelType>('');
     const [fetchingRowCount, setFetchingRowCount] = useState(false);
+
+    // Search and Selector States
+    const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    const [datasetSearch, setDatasetSearch] = useState('');
 
     const hasFetched = React.useRef(false);
 
@@ -213,29 +224,126 @@ export default function TrainingForm({ onSuccess }: TrainingFormProps) {
                             <Database className="h-4 w-4 text-primary" />
                             Seleccionar Dataset
                         </Label>
-                        <Select onValueChange={setSelectedDataset} value={selectedDataset}>
-                            <SelectTrigger className="bg-background/50 backdrop-blur-sm h-12 text-base">
-                                <SelectValue placeholder="Elige un dataset para analizar..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {datasets.length === 0 ? (
-                                    <div className="p-2 text-sm text-muted-foreground">No hay datasets disponibles</div>
-                                ) : (
-                                    datasets.map((ds, index) => (
-                                        <SelectItem key={`${ds.table_name || ds.name}-${index}`} value={ds.table_name || ds.name || ''}>
-                                            <div className="flex items-center gap-2">
-                                                {ds.extension?.toLowerCase() === 'view' ? (
+
+                        <Dialog open={isSelectorOpen} onOpenChange={setIsSelectorOpen}>
+                            <DialogTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-between bg-background/50 backdrop-blur-sm h-12 text-base font-normal border-input hover:border-primary/50 transition-all"
+                                >
+                                    <div className="flex items-center gap-2 truncate">
+                                        {selectedDataset ? (
+                                            <>
+                                                {datasets.find(ds => (ds.table_name || ds.name) === selectedDataset)?.extension?.toLowerCase() === 'view' ? (
                                                     <Sparkles className="h-4 w-4 text-purple-500" />
                                                 ) : (
                                                     <Database className="h-4 w-4 text-primary" />
                                                 )}
-                                                <span>{ds.filename || ds.table_name || ds.name}</span>
+                                                <span className="truncate">
+                                                    {datasets.find(ds => (ds.table_name || ds.name) === selectedDataset)?.filename || selectedDataset}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="text-muted-foreground">Elige un dataset para analizar...</span>
+                                        )}
+                                    </div>
+                                    <Search className="h-4 w-4 opacity-50 shrink-0" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-primary/20 backdrop-blur-xl bg-background/95">
+                                <DialogHeader className="p-4 pb-0">
+                                    <DialogTitle>Seleccionar Dataset</DialogTitle>
+                                </DialogHeader>
+                                <div className="p-4 space-y-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Buscar tabla o vista... (ej: ventas_totales)"
+                                            value={datasetSearch}
+                                            onChange={(e) => setDatasetSearch(e.target.value)}
+                                            className="pl-9 h-11 bg-muted/30 focus-visible:ring-primary/20"
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 -mr-1 custom-scrollbar">
+                                        {datasets.length === 0 ? (
+                                            <div className="py-8 text-center text-muted-foreground">
+                                                <Database className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                                                <p>No hay datasets disponibles</p>
                                             </div>
-                                        </SelectItem>
-                                    ))
-                                )}
-                            </SelectContent>
-                        </Select>
+                                        ) : (
+                                            (() => {
+                                                const normalize = (str: string) => str.toLowerCase().replace(/[_\s-]+/g, ' ').trim();
+                                                const searchNormalized = normalize(datasetSearch);
+
+                                                const filtered = datasets.filter(ds => {
+                                                    const name = ds.filename || ds.table_name || ds.name || '';
+                                                    return normalize(name).includes(searchNormalized);
+                                                });
+
+                                                if (filtered.length === 0) {
+                                                    return (
+                                                        <div className="py-8 text-center text-muted-foreground">
+                                                            <Search className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                                                            <p>No se encontraron resultados para "{datasetSearch}"</p>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return filtered.map((ds, index) => {
+                                                    const value = ds.table_name || ds.name || '';
+                                                    const isSelected = selectedDataset === value;
+
+                                                    return (
+                                                        <button
+                                                            key={`${value}-${index}`}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSelectedDataset(value);
+                                                                setIsSelectorOpen(false);
+                                                                setDatasetSearch('');
+                                                            }}
+                                                            className={cn(
+                                                                "w-full flex items-center justify-between p-3 rounded-lg transition-all text-left group",
+                                                                isSelected
+                                                                    ? "bg-primary/10 border border-primary/30"
+                                                                    : "hover:bg-muted/50 border border-transparent"
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className={cn(
+                                                                    "p-2 rounded-md",
+                                                                    ds.extension?.toLowerCase() === 'view' ? "bg-purple-500/10" : "bg-primary/10"
+                                                                )}>
+                                                                    {ds.extension?.toLowerCase() === 'view' ? (
+                                                                        <Sparkles className="h-4 w-4 text-purple-500" />
+                                                                    ) : (
+                                                                        <Database className="h-4 w-4 text-primary" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="font-medium text-sm truncate">
+                                                                        {ds.filename || ds.table_name || ds.name}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+                                                                        {ds.extension?.toLowerCase() === 'view' ? 'Vista DuckDB' : 'Dataset / Tabla'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <ChevronRight className={cn(
+                                                                "h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5",
+                                                                isSelected && "text-primary"
+                                                            )} />
+                                                        </button>
+                                                    );
+                                                });
+                                            })()
+                                        )}
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                         {rowCount !== null && (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1">
                                 <CheckCircle2 className="h-3 w-3 text-green-500" />

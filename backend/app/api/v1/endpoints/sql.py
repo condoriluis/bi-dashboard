@@ -25,9 +25,9 @@ def execute_sql(
     sql = query_req.query.strip()
     
     if not query_req.allow_unsafe:
-        allowed_prefixes = ("select", "describe", "show", "explain")
+        allowed_prefixes = ("select", "describe", "show", "explain", "with")
         if not sql.lower().startswith(allowed_prefixes):
-            raise HTTPException(status_code=400, detail="Only SELECT, SHOW, DESCRIBE and EXPLAIN queries are allowed.")
+            raise HTTPException(status_code=400, detail="Only SELECT, SHOW, DESCRIBE, EXPLAIN and WITH queries are allowed.")
         
         forbidden_keywords = ["drop", "delete", "insert", "update", "alter", "create", "truncate", "grant", "revoke"]
         for word in forbidden_keywords:
