@@ -5,9 +5,10 @@ import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, BarChart3, LineChart, PieChart, AreaChart, Database, Settings2, Activity, ArrowUpDown, Sparkles, DatabaseIcon } from "lucide-react";
+import { Loader2, BarChart3, LineChart, PieChart, AreaChart, Database, Settings2, Activity, ArrowUpDown, Sparkles, DatabaseIcon, AlignLeft, LayoutGrid, ScatterChart, Layers, Target, Filter, BarChartBig, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useDashboard } from "@/contexts/DashboardContext";
 
@@ -31,9 +32,10 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
 
     const [selectedDataset, setSelectedDataset] = useState<string>("");
     const [chartEngine, setChartEngine] = useState<"apex" | "plotly">("apex");
-    const [chartType, setChartType] = useState<"bar" | "line" | "area" | "pie" | "donut">("bar");
+    const [chartType, setChartType] = useState<string>("bar");
     const [xAxis, setXAxis] = useState<string>("");
     const [yAxis, setYAxis] = useState<string>("");
+    const [breakdown, setBreakdown] = useState<string>("none");
     const [aggFunc, setAggFunc] = useState<"SUM" | "AVG" | "COUNT" | "MIN" | "MAX" | "NONE">("SUM");
     const [limit, setLimit] = useState<string>("50");
     const [orderBy, setOrderBy] = useState<string>("x_asc");
@@ -72,7 +74,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
         if (selectedDataset && xAxis && yAxis && aggFunc) {
             generateChart();
         }
-    }, [selectedDataset, xAxis, yAxis, aggFunc, chartType, orderBy, limit]);
+    }, [selectedDataset, xAxis, yAxis, aggFunc, chartType, orderBy, limit, breakdown]);
 
     const fetchColumns = async (tableName: string) => {
         try {
@@ -101,21 +103,30 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
         try {
             const isDirect = aggFunc === "NONE";
 
+            const columns = [
+                { column: xAxis, alias: "x_val" },
+                {
+                    column: yAxis,
+                    function: isDirect ? undefined : aggFunc,
+                    alias: "y_val"
+                }
+            ];
+
+            if (breakdown && breakdown !== "none") {
+                columns.push({ column: breakdown, alias: "breakdown_val" });
+            }
+
             const request: any = {
                 table: selectedDataset,
-                columns: [
-                    { column: xAxis, alias: "x_val" },
-                    {
-                        column: yAxis,
-                        function: isDirect ? undefined : aggFunc,
-                        alias: "y_val"
-                    }
-                ],
+                columns: columns,
                 limit: parseInt(limit)
             };
 
             if (!isDirect) {
                 request.groupBy = [xAxis];
+                if (breakdown && breakdown !== "none") {
+                    request.groupBy.push(breakdown);
+                }
             }
 
             let orderCol = "x_val";
@@ -148,50 +159,142 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
     };
 
     const apexSeries = useMemo(() => {
-        const data = chartData.map(d => typeof d.y_val === 'bigint' ? Number(d.y_val) : d.y_val);
+        if (!chartData || chartData.length === 0) return [];
 
-        if (chartType === "pie" || chartType === "donut") {
+        const isCircular = chartType === "pie" || chartType === "donut" || chartType === "polarArea";
+
+        // 1. Handle Breakdown (Grouping)
+        if (breakdown && breakdown !== "none" && !isCircular) {
+            const categories = Array.from(new Set(chartData.map((d: any) => String(d.x_val)))).filter(Boolean);
+            const seriesNames = Array.from(new Set(chartData.map((d: any) => String(d.breakdown_val)))).filter(Boolean);
+
+            return seriesNames.map((seriesName: any) => {
+                const seriesData = categories.map((cat: any) => {
+                    const row = chartData.find((d: any) => String(d.x_val) === cat && String(d.breakdown_val) === seriesName);
+                    const val = row ? (typeof row.y_val === 'bigint' ? Number(row.y_val) : row.y_val) : 0;
+                    return val;
+                });
+                return { name: seriesName, data: seriesData };
+            });
+        }
+
+        // 2. Standard Flat Data
+        const data = chartData.map((d: any) => typeof d.y_val === 'bigint' ? Number(d.y_val) : d.y_val);
+
+        if (isCircular) {
             return data;
+        }
+
+        if (chartType === "mixed") {
+            return [
+                { name: aggFunc === "NONE" ? yAxis : `${aggFunc} (${yAxis})`, type: 'column', data: data },
+                { name: 'Tendencia', type: 'line', data: data }
+            ];
         }
 
         return [{
             name: aggFunc === "NONE" ? yAxis : `${aggFunc} de ${yAxis}`,
             data: data
         }];
-    }, [chartData, aggFunc, yAxis, chartType]);
+    }, [chartData, aggFunc, yAxis, chartType, breakdown]);
 
     const apexOptions = useMemo(() => {
-        const labels = chartData.map(d => String(d.x_val));
+        const isCircular = chartType === 'pie' || chartType === 'donut' || chartType === 'polarArea';
+        let categories: string[] = [];
+
+        if (breakdown && breakdown !== "none" && !isCircular) {
+            categories = Array.from(new Set(chartData.map((d: any) => String(d.x_val)))).filter(Boolean);
+        } else {
+            categories = chartData.map((d: any) => String(d.x_val));
+        }
 
         const baseOptions: any = {
             chart: {
                 background: 'transparent',
                 toolbar: { show: true },
-                animations: { enabled: true }
+                animations: { enabled: true },
+                fontFamily: 'inherit',
+                stacked: (chartType === 'bar' || chartType === 'column') && !!breakdown && breakdown !== "none"
             },
             theme: {
                 mode: isDarkMode ? 'dark' : 'light',
                 palette: 'palette1'
             },
-            dataLabels: { enabled: false },
-            stroke: { curve: 'smooth', width: 2 },
+            dataLabels: {
+                enabled: isCircular || chartType === 'funnel',
+                style: { colors: ['#fff'] },
+                dropShadow: { enabled: true }
+            },
+            stroke: {
+                curve: 'smooth',
+                width: (chartType === 'area' ? 3 : (chartType === 'polarArea' ? 1 : (isCircular ? 0 : 2)))
+            },
             xaxis: {
-                categories: labels,
+                categories: isCircular ? [] : categories,
                 labels: {
-                    style: { fontSize: '12px' }
+                    style: { fontSize: '12px' },
+                    rotate: -45,
+                    trim: true
+                },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                show: !isCircular,
+                labels: {
+                    formatter: (val: number) => {
+                        return (chartType === 'bar-horizontal' || chartType === 'funnel' || chartType === 'heatmap')
+                            ? val
+                            : (typeof val === 'number' ? val.toLocaleString() : val);
+                    }
                 }
             },
+            grid: {
+                show: !isCircular,
+                xaxis: { lines: { show: (chartType === 'bar-horizontal' || chartType === 'funnel') } },
+                yaxis: { lines: { show: (chartType !== 'bar-horizontal' && chartType !== 'funnel') } }
+            },
             colors: ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'],
-            fill: { opacity: 0.8 },
-            tooltip: { theme: isDarkMode ? 'dark' : 'light' }
+            fill: {
+                opacity: (chartType === 'area' || isCircular) ? 0.7 : 1,
+                gradient: (chartType === 'area') ? {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.2,
+                    stops: [0, 90, 100]
+                } : undefined
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 4,
+                    horizontal: chartType === 'bar-horizontal' || chartType === 'funnel',
+                    isFunnel: chartType === 'funnel',
+                    columnWidth: chartType === 'funnel' ? '80%' : '60%',
+                },
+                pie: { donut: { labels: { show: true, total: { show: true, label: 'Total' } } } },
+                polarArea: { rings: { strokeWidth: 1 }, spokes: { strokeWidth: 1 } },
+                heatmap: { radius: 2, enableShades: true, shadeIntensity: 0.5 }
+            },
+            tooltip: {
+                theme: isDarkMode ? 'dark' : 'light',
+                marker: { show: true }
+            },
+            markers: {
+                size: (chartType === 'scatter' || chartType === 'mixed') ? 5 : 0,
+                hover: { size: 7 }
+            },
+            legend: {
+                position: 'bottom',
+                show: isCircular || chartType === 'mixed' || (breakdown && breakdown !== 'none')
+            }
         };
 
-        if (chartType === "pie" || chartType === "donut") {
+        if (isCircular) {
             return {
                 ...baseOptions,
-                labels: labels,
+                labels: categories,
                 stroke: { show: false },
-                legend: { position: 'bottom' }
+                plotOptions: baseOptions.plotOptions
             };
         }
 
@@ -200,8 +303,8 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
 
     // Prepare Data for Plotly
     const plotlyData = useMemo(() => {
-        const x = chartData.map(d => String(d.x_val));
-        const y = chartData.map(d => typeof d.y_val === 'bigint' ? Number(d.y_val) : d.y_val);
+        const x = chartData.map((d: any) => String(d.x_val));
+        const y = chartData.map((d: any) => typeof d.y_val === 'bigint' ? Number(d.y_val) : d.y_val);
 
         let type: "bar" | "scatter" | "pie" = "bar";
         let mode: "lines+markers" | undefined = undefined;
@@ -334,13 +437,11 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                         {(() => {
                                             const dashboardDatasets = getDatasetsUsedByCurrentDashboard();
 
-                                            // 1. Filter datasets belonging to this dashboard (linked or used)
                                             const linkedDatasets = datasets.filter(d =>
                                                 d.dashboard_id === currentDashboard?.id ||
                                                 dashboardDatasets.includes(d.table_name)
                                             );
 
-                                            // 2. Filter other datasets (global or from other dashboards)
                                             const otherDatasets = datasets.filter(d =>
                                                 d.dashboard_id !== currentDashboard?.id &&
                                                 !dashboardDatasets.includes(d.table_name)
@@ -468,6 +569,30 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                     </Select>
                                 </div>
                             </div>
+
+                            {/* Breakdown */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                    Desglosar por (Opcional)
+                                </label>
+                                <Select
+                                    value={breakdown}
+                                    onValueChange={setBreakdown}
+                                    disabled={!selectedDataset}
+                                >
+                                    <SelectTrigger className="bg-background rounded-xl text-xs">
+                                        <SelectValue placeholder="Ninguno" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">-- Ninguno --</SelectItem>
+                                        {columns.map(c => (
+                                            <SelectItem key={c} value={c}>
+                                                {c}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         {/* Sort & Limit */}
@@ -515,14 +640,34 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                         {/* Chart Type */}
                         <div className="space-y-2">
                             <label className="text-xs font-medium text-muted-foreground">Tipo de gráfico</label>
-                            <Tabs value={chartType} onValueChange={(v: any) => setChartType(v)} className="w-full">
-                                <TabsList className="grid grid-cols-4 rounded-xl">
-                                    <TabsTrigger value="bar" title="Barras" className="rounded-xl"><BarChart3 className="h-4 w-4" /></TabsTrigger>
-                                    <TabsTrigger value="line" title="Líneas" className="rounded-xl"><LineChart className="h-4 w-4" /></TabsTrigger>
-                                    <TabsTrigger value="area" title="Área" className="rounded-xl"><AreaChart className="h-4 w-4" /></TabsTrigger>
-                                    <TabsTrigger value="pie" title="Pie" className="rounded-xl"><PieChart className="h-4 w-4" /></TabsTrigger>
-                                </TabsList>
-                            </Tabs>
+
+                            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+                                {[
+                                    { id: 'bar', label: 'Barras', icon: BarChart3 },
+                                    { id: 'bar-horizontal', label: 'Horiz.', icon: AlignLeft },
+                                    { id: 'column', label: 'Columnas', icon: BarChartBig },
+                                    { id: 'line', label: 'Línea', icon: LineChart },
+                                    { id: 'area', label: 'Área', icon: AreaChart },
+                                    { id: 'mixed', label: 'Mixto', icon: Layers },
+                                    { id: 'pie', label: 'Circular', icon: PieChart },
+                                    { id: 'donut', label: 'Donut', icon: Circle },
+                                    { id: 'polarArea', label: 'Polar', icon: Target },
+                                    { id: 'scatter', label: 'Dispers.', icon: ScatterChart },
+                                    { id: 'heatmap', label: 'Heatmap', icon: LayoutGrid },
+                                    { id: 'funnel', label: 'Embudo', icon: Filter },
+                                ].map((chart) => (
+                                    <Button
+                                        key={chart.id}
+                                        variant={chartType === chart.id ? "default" : "outline"}
+                                        title={chart.label}
+                                        className={`flex flex-col items-center justify-center h-14 p-1 space-y-0.5 ${chartType === chart.id ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted text-muted-foreground'}`}
+                                        onClick={() => setChartType(chart.id)}
+                                    >
+                                        <chart.icon className="w-4 h-4 mb-0.5" />
+                                        <span className="text-[9px] font-medium truncate w-full text-center leading-none">{chart.label}</span>
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* UX Hint */}
@@ -534,7 +679,6 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
             </Card>
 
 
-            {/* ERROR */}
             {error && (
                 <div className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 p-4 rounded-lg flex items-center justify-center animate-in slide-in-from-top-2">
                     {error}
@@ -573,7 +717,7 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                 <ApexChart
                                     options={apexOptions}
                                     series={apexSeries}
-                                    type={chartType}
+                                    type={((chartType === 'bar-horizontal' || chartType === 'column' || chartType === 'funnel') ? 'bar' : (chartType === 'mixed' ? 'line' : chartType)) as any}
                                     height={350}
                                     width="100%"
                                 />
@@ -585,6 +729,11 @@ export default function ChartBuilder({ className }: ChartBuilderProps) {
                                         config={{ responsive: true, displayModeBar: true }}
                                         style={{ width: "100%", height: "100%" }}
                                     />
+                                    {['pie', 'donut', 'line', 'bar', 'area'].includes(chartType) ? null : (
+                                        <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                                            Plotly soporte limitado para {chartType}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

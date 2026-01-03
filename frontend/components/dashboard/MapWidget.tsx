@@ -5,6 +5,8 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaf
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { formatNumber } from "@/lib/utils";
+import { Slider } from "@/components/ui/slider";
+import { Filter } from "lucide-react";
 
 function MapBounds({ points }: { points: [number, number][] }) {
     const map = useMap();
@@ -29,6 +31,8 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useState<'points' | 'heat'>('points');
     const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterRange, setFilterRange] = useState<[number, number]>([0, 100]);
 
     useEffect(() => {
         setMounted(true);
@@ -45,10 +49,6 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
             .filter(row => !isNaN(row.lat) && !isNaN(row.lon) && row.lat !== 0 && row.lon !== 0);
     }, [data]);
 
-    const points = useMemo(() => {
-        return validData.map(row => [row.lat, row.lon] as [number, number]);
-    }, [validData]);
-
     const { minSize, maxSize } = useMemo(() => {
         if (!config.sizeAxis || validData.length === 0) return { minSize: 10, maxSize: 10 };
         const values = validData
@@ -63,6 +63,26 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
         };
     }, [validData, config.sizeAxis]);
 
+    useEffect(() => {
+        if (config.sizeAxis && minSize !== maxSize) {
+            setFilterRange([minSize, maxSize]);
+        }
+    }, [minSize, maxSize, config.sizeAxis]);
+
+    const filteredData = useMemo(() => {
+        if (!config.sizeAxis || minSize === maxSize) return validData;
+
+        return validData.filter(row => {
+            const size = Number(row.size);
+            if (isNaN(size)) return true;
+            return size >= filterRange[0] && size <= filterRange[1];
+        });
+    }, [validData, filterRange, config.sizeAxis, minSize, maxSize]);
+
+    const points = useMemo(() => {
+        return filteredData.map(row => [row.lat, row.lon] as [number, number]);
+    }, [filteredData]);
+
     const getRadius = (value: number) => {
         if (!config.sizeAxis) return 10;
         if (value === undefined || value === null || isNaN(value)) return 10;
@@ -73,8 +93,8 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
     };
 
     const heatPoints = useMemo(() => {
-        return validData.map(d => [d.lat, d.lon, d.size ? Number(d.size) : 1]);
-    }, [validData]);
+        return filteredData.map(d => [d.lat, d.lon, d.size ? Number(d.size) : 1]);
+    }, [filteredData]);
 
     const handleResetView = () => {
         if (mapInstance && points.length > 0) {
@@ -111,7 +131,7 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
 
                 <MapBounds points={points} />
 
-                {viewMode === 'points' && validData.map((row, i) => {
+                {viewMode === 'points' && filteredData.map((row, i) => {
                     let fillColor = config.color && config.color !== 'default' ? config.color : "#3b82f6";
                     if (row.color) {
                         const colors = ['#0ea5e9', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'];
@@ -153,7 +173,17 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
                                     <h4 className="font-bold text-sm border-b border-border/50 pb-1.5">{row.label}</h4>
                                     <div className="text-xs space-y-1.5">
                                         {Object.entries(row)
-                                            .filter(([key]) => !['lat', 'lon', 'size', 'color', 'label'].includes(key) && row[key] !== null)
+                                            .filter(([key]) => {
+
+                                                if (['lat', 'lon', 'size', 'color', 'label'].includes(key)) return false;
+                                                if (row[key] === null) return false;
+
+                                                if (config.tooltipColumns && config.tooltipColumns.length > 0) {
+                                                    return config.tooltipColumns.includes(key);
+                                                }
+
+                                                return true;
+                                            })
                                             .map(([key, value]) => (
                                                 <div key={key} className="flex justify-between items-center gap-4">
                                                     <span className="text-muted-foreground capitalize text-[10px]">{key.replace(/_/g, ' ')}</span>
@@ -210,7 +240,53 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="m16 12-4-4-4 4" /><path d="M12 16V8" /></svg>
                 </button>
+
+                {config.sizeAxis && minSize !== maxSize && (
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`bg-background/90 backdrop-blur-md border border-border/50 p-2.5 rounded-lg shadow-lg hover:bg-muted transition-colors ${showFilters ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        title="Filtrar puntos"
+                    >
+                        <Filter className="h-4 w-4" />
+                    </button>
+                )}
             </div>
+
+            {config.sizeAxis && showFilters && minSize !== maxSize && (
+                <div className="absolute top-4 left-4 z-10 pointer-events-auto">
+                    <div className="bg-background/95 backdrop-blur-md border border-border/50 p-4 rounded-lg shadow-lg min-w-[280px] space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold flex items-center gap-2">
+                                <Filter className="h-4 w-4" />
+                                Filtrar por Rango
+                            </h4>
+                            <button
+                                onClick={() => setFilterRange([minSize, maxSize])}
+                                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                Resetear
+                            </button>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>Mín: {formatNumber(filterRange[0])}</span>
+                                <span>Máx: {formatNumber(filterRange[1])}</span>
+                            </div>
+                            <Slider
+                                min={minSize}
+                                max={maxSize}
+                                step={(maxSize - minSize) / 100}
+                                value={filterRange}
+                                onValueChange={(value) => setFilterRange(value as [number, number])}
+                                className="w-full"
+                            />
+                            <div className="text-xs text-center text-muted-foreground pt-1">
+                                Mostrando <span className="font-semibold text-foreground">{filteredData.length}</span> de <span className="font-semibold text-foreground">{validData.length}</span> puntos
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {config.sizeAxis && viewMode === 'points' && (
                 <div className="absolute bottom-6 left-6 z-10 pointer-events-none">
@@ -232,7 +308,6 @@ export default function MapWidget({ data, config, isDarkMode = false }: MapWidge
     );
 }
 
-// Heatmap Component Wrapper
 function HeatmapLayer({ points }: { points: any[] }) {
     const map = useMap();
 
@@ -285,7 +360,6 @@ function HeatmapLayer({ points }: { points: any[] }) {
                     map.removeLayer(heatLayer);
                 }
             } catch (e) {
-                // Ignore cleanup errors if map is gone
             }
         };
     }, [points, map]);

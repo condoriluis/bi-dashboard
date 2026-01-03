@@ -235,7 +235,7 @@ export default function DashboardPage() {
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in-50 duration-700">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in-50 duration-700">
                         {widgets.map((widget) => {
                             const spanClass = {
                                 1: 'col-span-1',
@@ -244,7 +244,7 @@ export default function DashboardPage() {
                                 4: 'col-span-1 md:col-span-2 lg:col-span-4'
                             }[widget.colSpan || (widget.type === 'metric' ? 1 : 2)] || 'col-span-2';
 
-                            const heightClass = widget.type === 'metric' ? 'h-[180px]' :
+                            const heightClass = widget.type === 'metric' ? 'h-[160px]' :
                                 widget.type === 'table' ? 'h-[600px]' :
                                     widget.type === 'map' ? 'h-[700px]' :
                                         'h-[500px]';

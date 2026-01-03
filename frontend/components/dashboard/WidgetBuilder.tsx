@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { WidgetConfig } from "@/lib/utils";
@@ -47,6 +48,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
     const [labelAxis, setLabelAxis] = useState("");
     const [sizeAxis, setSizeAxis] = useState("");
     const [colorColumn, setColorColumn] = useState("");
+    const [tooltipColumns, setTooltipColumns] = useState<string[]>([]);
 
     useEffect(() => {
         if (open && initialConfig) {
@@ -68,6 +70,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
             setLabelAxis(initialConfig.labelAxis || "");
             setSizeAxis(initialConfig.sizeAxis || "");
             setColorColumn(initialConfig.colorColumn || "");
+            setTooltipColumns(initialConfig.tooltipColumns || []);
         } else if (open && !initialConfig) {
             resetForm();
         }
@@ -81,7 +84,6 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
         }
     });
 
-    // Fetch Columns when Dataset changes
     const { data: columns } = useQuery<string[]>({
         queryKey: ["columns", dataset],
         queryFn: async () => {
@@ -122,6 +124,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
             labelAxis: type === 'map' ? labelAxis : undefined,
             sizeAxis: type === 'map' ? sizeAxis : undefined,
             colorColumn: type === 'map' ? colorColumn : undefined,
+            tooltipColumns: type === 'map' && tooltipColumns.length > 0 ? tooltipColumns : undefined,
         };
         onSave(config);
         onOpenChange(false);
@@ -147,6 +150,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
         setLabelAxis("");
         setSizeAxis("");
         setColorColumn("");
+        setTooltipColumns([]);
     };
 
     return (
@@ -159,7 +163,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="title" className="text-right">
                             Título
@@ -271,7 +275,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
 
                     {/* Widget Type Tabs */}
                     <Tabs value={type} onValueChange={(v: any) => setType(v)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-4 mb-4">
+                        <TabsList className="grid w-full grid-cols-4 mb-2">
                             <TabsTrigger value="metric" className="flex items-center gap-2">
                                 <Binary className="h-4 w-4" /> Métrica
                             </TabsTrigger>
@@ -287,12 +291,14 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                         </TabsList>
 
                         <TabsContent value="map" className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="space-y-2">
                                     <Label>Latitud (Eje Y)</Label>
                                     <Select value={latAxis} onValueChange={setLatAxis}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Columna de Latitud..." />
+                                        <SelectTrigger className="w-full">
+                                            <span className="truncate w-full text-left">
+                                                <SelectValue placeholder="Latitud..." />
+                                            </span>
                                         </SelectTrigger>
                                         <SelectContent>
                                             {columns?.map((col) => (
@@ -300,13 +306,14 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-xs text-muted-foreground">Debe contener números decimales (-90 a 90)</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Longitud (Eje X)</Label>
                                     <Select value={lonAxis} onValueChange={setLonAxis}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Columna de Longitud..." />
+                                        <SelectTrigger className="w-full">
+                                            <span className="truncate w-full text-left">
+                                                <SelectValue placeholder="Longitud..." />
+                                            </span>
                                         </SelectTrigger>
                                         <SelectContent>
                                             {columns?.map((col) => (
@@ -314,16 +321,15 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-xs text-muted-foreground">Debe contener números decimales (-180 a 180)</p>
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Etiqueta (Título)</Label>
                                     <Select value={labelAxis} onValueChange={setLabelAxis}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Ej: Nombre de Ciudad..." />
+                                        <SelectTrigger className="w-full">
+                                            <span className="truncate w-full text-left">
+                                                <SelectValue placeholder="Ej: Ciudad..." />
+                                            </span>
                                         </SelectTrigger>
                                         <SelectContent>
                                             {columns?.map((col) => (
@@ -335,8 +341,10 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                 <div className="space-y-2">
                                     <Label>Tamaño (Burbuja)</Label>
                                     <Select value={sizeAxis} onValueChange={setSizeAxis}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Ej: Total Ventas..." />
+                                        <SelectTrigger className="w-full">
+                                            <span className="truncate w-full text-left">
+                                                <SelectValue placeholder="Ej: Total..." />
+                                            </span>
                                         </SelectTrigger>
                                         <SelectContent>
                                             {columns?.map((col) => (
@@ -345,33 +353,121 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                            </div>
+
+                            <div className="border-t space-y-2">
+                                <div className="flex items-center justify-between mb-0">
+                                    <Label className="text-sm font-semibold">Columnas en Popup</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => {
+                                                const excludedCols = [latAxis, lonAxis].filter(Boolean);
+                                                const availableCols = columns?.filter(col => !excludedCols.includes(col)) || [];
+                                                setTooltipColumns(availableCols);
+                                            }}
+                                        >
+                                            Todas
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => setTooltipColumns([])}
+                                        >
+                                            Ninguna
+                                        </Button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Selecciona qué columnas mostrar en el <b>popup</b> del mapa (excluye lat, lon, label, size, color)
+                                </p>
+                                <div className="max-h-30 overflow-y-auto border rounded-md p-2 bg-muted/20">
+                                    {columns && columns.length > 0 ? (
+                                        (() => {
+                                            const excludedCols = [latAxis, lonAxis].filter(Boolean);
+                                            const availableCols = columns.filter(col => !excludedCols.includes(col));
+
+                                            if (availableCols.length === 0) {
+                                                return (
+                                                    <p className="text-xs text-muted-foreground text-center py-4">
+                                                        No hay columnas adicionales disponibles
+                                                    </p>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {availableCols.map((col) => (
+                                                        <div key={col} className="flex items-center space-x-2">
+                                                            <Checkbox
+                                                                id={`tooltip-${col}`}
+                                                                checked={tooltipColumns.includes(col)}
+                                                                onCheckedChange={(checked) => {
+                                                                    if (checked) {
+                                                                        setTooltipColumns([...tooltipColumns, col]);
+                                                                    } else {
+                                                                        setTooltipColumns(tooltipColumns.filter(c => c !== col));
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <label
+                                                                htmlFor={`tooltip-${col}`}
+                                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer truncate"
+                                                                title={col}
+                                                            >
+                                                                {col}
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground text-center py-0">
+                                            Selecciona un dataset primero
+                                        </p>
+                                    )}
+                                </div>
+                                {tooltipColumns.length > 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {tooltipColumns.length} columna{tooltipColumns.length !== 1 ? 's' : ''} seleccionada{tooltipColumns.length !== 1 ? 's' : ''}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Color Principal</Label>
+                                <Label>Color</Label>
                                 <div className="grid grid-cols-5 gap-2">
                                     {[
-                                        { val: 'default', bg: 'bg-slate-500' },
-                                        { val: '#0ea5e9', bg: 'bg-sky-500' },
-                                        { val: '#22c55e', bg: 'bg-green-500' },
-                                        { val: '#eab308', bg: 'bg-yellow-500' },
-                                        { val: '#f43f5e', bg: 'bg-rose-500' },
-                                        { val: '#8b5cf6', bg: 'bg-violet-500' },
-                                        { val: '#f97316', bg: 'bg-orange-500' },
-                                        { val: '#ec4899', bg: 'bg-pink-500' },
-                                        { val: '#14b8a6', bg: 'bg-teal-500' },
-                                        { val: '#6366f1', bg: 'bg-indigo-500' },
+                                        { label: "Default", value: 'default', color: '#64748b' },
+                                        { label: "Azul Corporativo", value: "#0ea5e9" },
+                                        { label: "Turquesa Profesional", value: "#0891b2" },
+                                        { label: "Índigo Moderno", value: "#6366f1" },
+                                        { label: "Violeta Creativo", value: "#8b5cf6" },
+                                        { label: "Verde Éxito", value: "#22c55e" },
+                                        { label: "Amarillo Energía", value: "#eab308" },
+                                        { label: "Naranja Dinámico", value: "#f97316" },
+                                        { label: "Rojo Impacto", value: "#ef4444" },
+                                        { label: "Gris Neutro", value: "#64748b" },
                                     ].map((c) => (
                                         <div
-                                            key={c.val}
-                                            className={`h-8 rounded cursor-pointer border-2 transition-all ${c.bg} ${color === c.val ? 'border-foreground scale-110 shadow-md' : 'border-transparent opacity-70 hover:opacity-100'}`}
-                                            onClick={() => setColor(c.val)}
+                                            key={c.value}
+                                            title={c.label}
+                                            className={`h-6 rounded cursor-pointer border-2 transition-all ${color === c.value ? 'border-foreground scale-110 shadow-md ring-1 ring-offset-1 ring-foreground/20' : 'border-transparent opacity-80 hover:opacity-100 hover:scale-105'}`}
+                                            style={{ backgroundColor: (c as any).color || c.value }}
+                                            onClick={() => setColor(c.value)}
                                         />
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4 border-t pt-4">
+                            <div className="grid grid-cols-4 items-center gap-4 border-t pt-2 mb-2">
                                 <Label className="text-right">Ordenar por</Label>
                                 <div className="col-span-3 grid grid-cols-2 gap-2">
                                     <Select value={orderBy} onValueChange={setOrderBy}>
@@ -401,7 +497,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4 border-t pt-4">
+                            <div className="grid grid-cols-4 items-center gap-4 pt-2">
                                 <Label className="text-right">Límite</Label>
                                 <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
                                     <SelectTrigger className="col-span-3">
@@ -418,6 +514,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                     </SelectContent>
                                 </Select>
                             </div>
+
                         </TabsContent>
 
                         {/* Metric Config */}
@@ -627,7 +724,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4 border-t pt-4">
+                            <div className="grid grid-cols-4 items-center gap-4 border-t pt-2">
                                 <Label className="text-right">Ordenar por</Label>
                                 <div className="col-span-3 grid grid-cols-2 gap-2">
                                     <Select value={orderBy} onValueChange={setOrderBy}>
@@ -709,7 +806,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4 border-t pt-4">
+                            <div className="grid grid-cols-4 items-center gap-4 border-t pt-2">
                                 <Label className="text-right">Ordenar por</Label>
                                 <div className="col-span-3 grid grid-cols-2 gap-2">
                                     <Select value={orderBy} onValueChange={setOrderBy}>
@@ -739,7 +836,7 @@ export function WidgetBuilder({ open, onOpenChange, onSave, initialConfig }: Wid
                                 </div>
                             </div>
                             <p className="text-sm text-muted-foreground text-center pt-2">
-                                Se habilitará paginación automática para navergar los datos.
+                                Se habilitará paginación automática para navegar los datos.
                             </p>
                         </TabsContent>
                     </Tabs>

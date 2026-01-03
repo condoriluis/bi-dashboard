@@ -27,6 +27,7 @@ export interface WidgetConfig {
   labelAxis?: string;
   sizeAxis?: string;
   colorColumn?: string;
+  tooltipColumns?: string[];
 }
 
 export function formatCurrency(value: number): string {
@@ -151,7 +152,16 @@ export function buildSecureQuery(config: WidgetConfig) {
     if (config.sizeAxis) query.columns.push({ column: config.sizeAxis, alias: 'size' });
     if (config.colorColumn) query.columns.push({ column: config.colorColumn, alias: 'color' });
 
-    query.columns.push('*');
+    if (config.tooltipColumns && config.tooltipColumns.length > 0) {
+      config.tooltipColumns.forEach(col => {
+        const isUsed = [config.latAxis, config.lonAxis].includes(col);
+        if (!isUsed) {
+          query.columns.push(col);
+        }
+      });
+    } else if (!config.tooltipColumns) {
+      query.columns.push('*');
+    }
 
     query.where = [];
 

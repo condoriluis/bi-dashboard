@@ -266,7 +266,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
                 <CardContent className="relative z-10 space-y-2">
                     <div
-                        className="text-4xl font-bold tracking-tight transition-colors duration-300"
+                        className="text-4xl mt-3 font-bold tracking-tight transition-colors duration-300"
                         style={{ color: hasColor ? config.color : 'hsl(var(--primary))' }}
                     >
                         {formattedValue}
@@ -358,7 +358,6 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
         }
 
-        // [Existing Mixed Logic]
         if (config.chartType === 'mixed' && !forecastData.length) {
 
             if (config.breakdown) {
@@ -666,7 +665,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
         return (
             <Card className="flex flex-col h-full border-primary/20 hover:shadow-lg transition-all duration-300 col-span-2 group overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 pr-2">
+                <CardHeader className="flex flex-row items-center justify-between pb-0 pr-2">
                     <div>
                         <CardTitle className="text-base font-semibold">{config.title}</CardTitle>
                         <CardDescription className="text-xs font-medium tracking-wider text-muted-foreground/70">
@@ -677,7 +676,7 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
                         <DashboardWidgetMenu config={config} onEdit={onEdit} onDelete={onDelete} onExport={handleDownloadCSV} />
                     </div>
                 </CardHeader>
-                <CardContent className="h-full flex-1 min-h-0 p-0 relative">
+                <CardContent className="h-full flex-1 min-h-0 p-0 relative pt-0 mt-0">
                     {hasData ? (
                         <MapWidget data={result} config={config} isDarkMode={isDarkMode} />
                     ) : (
