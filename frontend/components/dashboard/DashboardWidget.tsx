@@ -92,7 +92,6 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
     const handleDownloadCSV = () => {
         if (!result || result.length === 0) return;
 
-        // Get headers
         const headers = Object.keys(result[0]).join(",");
         const rows = result.map((row: any) => Object.values(row).map(value => `"${value}"`).join(",")).join("\n");
         const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
@@ -107,8 +106,13 @@ export function DashboardWidget({ config, onDelete, onEdit }: DashboardWidgetPro
 
     if (isLoading) {
         return (
-            <Card className="h-full flex items-center justify-center min-h-[200px] border-primary/20">
-                <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+            <Card className="relative flex h-full min-h-[200px] items-center justify-center overflow-hidden border-muted/30 bg-background">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
+                    <span className="text-sm text-muted-foreground">
+                        Cargando…
+                    </span>
+                </div>
             </Card>
         );
     }

@@ -499,7 +499,18 @@ export default function QueryPage() {
                                                     className={`font-mono text-sm whitespace-nowrap ${row[col] === null ? 'text-muted-foreground italic' : ''
                                                         }`}
                                                 >
-                                                    {row[col] === null ? 'NULL' : String(row[col])}
+                                                    {(() => {
+                                                        const val = row[col];
+                                                        if (val === null) return <span className="text-muted-foreground italic">NULL</span>;
+                                                        if (typeof val === 'object') {
+                                                            return (
+                                                                <span className="font-mono text-xs" title={JSON.stringify(val, null, 2)}>
+                                                                    {JSON.stringify(val)}
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return String(val);
+                                                    })()}
                                                 </TableCell>
                                             ))}
                                         </TableRow>

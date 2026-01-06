@@ -659,11 +659,17 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                                                 <TableRow key={i} className="hover:bg-muted/50">
                                                                     {Object.values(row).map((val: any, j) => (
                                                                         <TableCell key={j} className="px-4 py-2.5 text-sm font-mono whitespace-nowrap">
-                                                                            {val === null ? (
-                                                                                <span className="italic opacity-50 text-muted-foreground text-xs">NULL</span>
-                                                                            ) : (
-                                                                                <span className="text-foreground/90">{String(val)}</span>
-                                                                            )}
+                                                                            {(() => {
+                                                                                if (val === null) return <span className="italic opacity-50 text-muted-foreground text-xs">NULL</span>;
+                                                                                if (typeof val === 'object') {
+                                                                                    return (
+                                                                                        <span className="font-mono text-xs text-foreground/90" title={JSON.stringify(val, null, 2)}>
+                                                                                            {JSON.stringify(val)}
+                                                                                        </span>
+                                                                                    );
+                                                                                }
+                                                                                return <span className="text-foreground/90">{String(val)}</span>;
+                                                                            })()}
                                                                         </TableCell>
                                                                     ))}
                                                                 </TableRow>
@@ -998,11 +1004,17 @@ export default function TransformationDialog({ open, onClose, transformation, in
                                                                 <TableRow key={i} className="hover:bg-muted/50">
                                                                     {Object.values(row).map((val: any, j) => (
                                                                         <TableCell key={j} className="px-4 py-2.5 text-sm font-mono whitespace-nowrap">
-                                                                            {val === null ? (
-                                                                                <span className="italic opacity-50 text-muted-foreground text-xs">NULL</span>
-                                                                            ) : (
-                                                                                <span className="text-foreground/90">{String(val)}</span>
-                                                                            )}
+                                                                            {(() => {
+                                                                                if (val === null) return <span className="italic opacity-50 text-muted-foreground text-xs">NULL</span>;
+                                                                                if (typeof val === 'object') {
+                                                                                    return (
+                                                                                        <span className="font-mono text-xs text-foreground/90" title={JSON.stringify(val, null, 2)}>
+                                                                                            {JSON.stringify(val)}
+                                                                                        </span>
+                                                                                    );
+                                                                                }
+                                                                                return <span className="text-foreground/90">{String(val)}</span>;
+                                                                            })()}
                                                                         </TableCell>
                                                                     ))}
                                                                 </TableRow>
